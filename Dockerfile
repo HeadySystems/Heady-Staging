@@ -1,30 +1,19 @@
-# HEADY_BRAND:BEGIN
-# ╔══════════════════════════════════════════════════════════════════╗
-# ║  ██╗  ██╗███████╗ █████╗ ██████╗ ██╗   ██╗                     ║
-# ║  ██║  ██║██╔════╝██╔══██╗██╔══██╗╚██╗ ██╔╝                     ║
-# ║  ███████║█████╗  ███████║██║  ██║ ╚████╔╝                      ║
-# ║  ██╔══██║██╔══╝  ██╔══██║██║  ██║  ╚██╔╝                       ║
-# ║  ██║  ██║███████╗██║  ██║██████╔╝   ██║                        ║
-# ║  ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝╚═════╝    ╚═╝                        ║
-# ║                                                                  ║
-# ║  ∞ SACRED GEOMETRY ∞  Organic Systems · Breathing Interfaces    ║
-# ║  FILE: Dockerfile   LAYER: root                                 ║
-# ╚══════════════════════════════════════════════════════════════════╝
-# HEADY_BRAND:END
-FROM node:20-alpine
-
+FROM node:20-slim AS base
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --only=production
+# Install deps
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev
 
+# Copy source
 COPY . .
 
-RUN npm run build || true
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3301/health || exit 1
 
-EXPOSE 3300
+EXPOSE 3301
+VOLUME /app/data
 
-HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-  CMD wget -qO- http://localhost:3300/api/health || exit 1
-
+USER node
 CMD ["node", "heady-manager.js"]

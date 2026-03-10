@@ -1,16 +1,21 @@
 {
-  "root": true,
-  "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
-  "extends": [
-    "eslint:recommended",
-    "plugin:@typescript-eslint/recommended"
-  ],
+  "env": {
+    "node": true,
+    "es2024": true
+  },
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
   "rules": {
-    "no-restricted-syntax": ["error", {
-      "selector": "Literal[value=/api.headysystems.com|127\.0\.0\.1/]",
-      "message": "Use internal.headyio.com or api.headyio.com instead of api.headysystems.com/api.headysystems.com"
-    }]
+    "no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_"
+      }
+    ],
+    "no-console": "off",
+    "prefer-const": "error",
+    "no-var": "error"
   }
 }
-

@@ -85,7 +85,7 @@
     (function () {
       'use strict';
       var PHI = 1.618; var PSI = 0.618;
-
+      
       // Default gateway port
       const gatewayPort = 3352;
       const protocol = window.location.protocol === 'file:' ? 'http:' : window.location.protocol;
@@ -112,7 +112,7 @@
 
       function render(data) {
         var grid = document.getElementById('runtime-grid');
-
+        
         // Convert runtimes object to array
         const runtimesList = [];
         if (data.runtimes) {
@@ -132,7 +132,7 @@
                 });
             }
         }
-
+        
         grid.innerHTML = runtimesList.map(function (r) {
           var utilPct = (r.utilization * 100).toFixed(1);
           var memPct = r.vram ? ((r.memUsed / r.vram) * 100).toFixed(1) : '0.0';
