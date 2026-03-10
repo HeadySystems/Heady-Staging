@@ -16,8 +16,10 @@
 
 const express = require('express');
 const crypto = require('crypto');
+const { createLogger } = require('../../packages/structured-logger');
 
 const router = express.Router();
+const log = createLogger('auth', 'authentication');
 
 // ═════════════════════════════════════════════════════════════════════════════
 // PASSWORD HASHING (bcrypt-like using PBKDF2)
@@ -68,7 +70,7 @@ const DEMO_USER = {
   id: 'demo-user-1',
   email: 'eric@headyconnection.org',
   passwordHash: hashPassword('heady2026'),
-  name: 'Eric Heady',
+  name: 'Eric Haywood',
 };
 
 // Register demo user on startup
@@ -311,7 +313,7 @@ router.post('/login', (req, res) => {
       user: { id: user.id, email: user.email, name: user.name },
     });
   } catch (error) {
-    console.error('Login error:', error);
+    log.error('Login error', { errorMessage: error.message, errorStack: error.stack });
     return res.status(500).json({
       error: 'server_error',
       message: error.message,
@@ -391,7 +393,7 @@ router.post('/register', (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    log.error('Registration error', { errorMessage: error.message, errorStack: error.stack });
     return res.status(500).json({
       error: 'server_error',
       message: error.message,
@@ -419,7 +421,7 @@ router.post('/logout', requireAuth, (req, res) => {
       message: 'Logged out successfully',
     });
   } catch (error) {
-    console.error('Logout error:', error);
+    log.error('Logout error', { errorMessage: error.message, errorStack: error.stack });
     return res.status(500).json({
       error: 'server_error',
       message: error.message,
@@ -444,7 +446,7 @@ router.get('/me', requireAuth, (req, res) => {
       user: req.user,
     });
   } catch (error) {
-    console.error('GET /me error:', error);
+    log.error('GET /me error', { errorMessage: error.message, errorStack: error.stack });
     return res.status(500).json({
       error: 'server_error',
       message: error.message,
@@ -500,7 +502,7 @@ router.get('/validate', (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Validate error:', error);
+    log.error('Validate error', { errorMessage: error.message, errorStack: error.stack });
     return res.status(500).json({
       error: 'server_error',
       message: error.message,

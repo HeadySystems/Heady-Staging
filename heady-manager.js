@@ -45,6 +45,10 @@ const fetch = require('node-fetch');
 const { createAppAuth } = require('@octokit/auth-app');
 const YAML = require('yamljs');
 const swaggerUi = require('swagger-ui-express');
+const { createLogger } = require('./packages/structured-logger');
+
+// Structured logger for heady-manager
+const log = createLogger('heady-manager', 'core');
 
 /**
  * @swagger
@@ -81,11 +85,11 @@ function preloadPersistentMemory() {
     if (fs.existsSync(memoryPath)) {
       const memoryData = JSON.parse(fs.readFileSync(memoryPath, 'utf8'));
       global.persistentMemory = memoryData;
-      console.log('🧠 Persistent memory preloaded - Zero-second access enabled');
+      log.info('Persistent memory preloaded - Zero-second access enabled');
       return true;
     }
   } catch (error) {
-    console.warn('⚠ Failed to preload persistent memory:', error.message);
+    log.warn('Failed to preload persistent memory', { errorMessage: error.message });
   }
   return false;
 }
@@ -121,23 +125,23 @@ function enforceHeadyConnectivity() {
   const criticalServices = Object.entries(remoteConfig.services)
     .filter(([_, config]) => config.critical);
 
-  console.log(`🔒 ENFORCING 100% HEADY CONNECTIVITY: ${criticalServices.length} critical services`);
+  log.info('ENFORCING 100% HEADY CONNECTIVITY', { criticalServicesCount: criticalServices.length });
 
   criticalServices.forEach(([name, config]) => {
     const status = checkRemoteService(name);
     if (!status.ok) {
-      console.error(`❌ CRITICAL: ${name} service unavailable - ${status.error?.message || 'Unknown error'}`);
+      log.error('CRITICAL service unavailable', { serviceName: name, errorMessage: status.error?.message || 'Unknown error' });
     } else {
-      console.log(`✅ CONNECTED: ${name} -> ${status.endpoint || 'local'}`);
+      log.info('CONNECTED to service', { serviceName: name, endpoint: status.endpoint || 'local' });
     }
   });
 }
 
 // Modify remote calls to respect config
 if (remoteConfig.critical_only) {
-  console.log('⚠️  Running in local-first mode (non-critical remote calls disabled)');
+  log.info('Running in local-first mode (non-critical remote calls disabled)');
 } else {
-  console.log('🌐 Full Heady cloud connectivity enabled');
+  log.info('Full Heady cloud connectivity enabled');
   enforceHeadyConnectivity();
 }
 
@@ -145,9 +149,9 @@ if (remoteConfig.critical_only) {
 let imaginationRoutes = null;
 try {
   imaginationRoutes = require("./src/routes/imagination-routes");
-  console.log("  ∞ Imagination Engine: ROUTES LOADED");
+  log.info("Imagination Engine: ROUTES LOADED");
 } catch (err) {
-  console.warn(`  ⚠ Imagination routes not loaded: ${err.message}`);
+  log.warn("Imagination routes not loaded", { errorMessage: err.message });
 }
 
 // ─── Secrets & Cloudflare Management ──────────────────────────────
@@ -178,10 +182,10 @@ try {
     secretsManager.register({ ...s, source: "env" });
   }
   secretsManager.restoreState();
-  console.log("  \u221e Secrets Manager: LOADED (" + secretsManager.getAll().length + " secrets tracked)");
-  console.log("  \u221e Cloudflare Manager: LOADED (token " + (cfManager.isTokenValid() ? "valid" : "needs refresh") + ")");
+  log.info("Secrets Manager: LOADED", { secretsCount: secretsManager.getAll().length });
+  log.info("Cloudflare Manager: LOADED", { tokenValid: cfManager.isTokenValid() });
 } catch (err) {
-  console.warn(`  \u26a0 Secrets/Cloudflare not loaded: ${err.message}`);
+  log.warn("Secrets/Cloudflare not loaded", { errorMessage: err.message });
 }
 
 const PORT = 3301;
@@ -268,9 +272,9 @@ if (imaginationRoutes) {
 let claudeRoutes = null;
 try {
   claudeRoutes = require("./src/routes/claude-routes");
-  console.log("  ∞ Claude Service: ROUTES LOADED");
+  log.info("Claude Service: ROUTES LOADED");
 } catch (err) {
-  console.warn(`  ⚠ Claude routes not loaded: ${err.message}`);
+  log.warn("Claude routes not loaded", { errorMessage: err.message });
 }
 
 // ─── Claude Routes ────────────────────────────────────────────
@@ -283,9 +287,9 @@ let vmTokenRoutes = null;
 try {
   const createVmTokenRoutes = require("./src/routes/vm-token-routes");
   vmTokenRoutes = createVmTokenRoutes(secretsManager);
-  console.log("  ∞ VM Token Routes: LOADED");
+  log.info("VM Token Routes: LOADED");
 } catch (err) {
-  console.warn(`  ⚠ VM Token routes not loaded: ${err.message}`);
+  log.warn("VM Token routes not loaded", { errorMessage: err.message });
 }
 
 if (vmTokenRoutes) {
@@ -333,7 +337,7 @@ app.post('/api/vm/revoke', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Revocation failed:', error);
+    log.error('Revocation failed', { errorMessage: error.message, errorStack: error.stack });
     res.status(500).json({ error: 'Failed to revoke token' });
   }
 });
@@ -725,10 +729,10 @@ let pipelineError = null;
 try {
   const pipelineMod = require("./src/hc_pipeline");
   pipeline = pipelineMod.pipeline;
-  console.log("  ∞ Pipeline engine: LOADED");
+  log.info("Pipeline engine: LOADED");
 } catch (err) {
   pipelineError = err.message;
-  console.warn(`  ⚠ Pipeline engine not loaded: ${err.message}`);
+  log.warn("Pipeline engine not loaded", { errorMessage: err.message });
 }
 
 /**
@@ -1009,17 +1013,17 @@ try {
 
   resourceManager.on("resource_event", (event) => {
     if (event.severity === "WARN_HARD" || event.severity === "CRITICAL") {
-      console.warn(`  ⚠ Resource ${event.severity}: ${event.resourceType} at ${event.currentUsagePercent}%`);
+      log.warn("Resource severity event", { severity: event.severity, resourceType: event.resourceType, usagePercent: event.currentUsagePercent });
     }
   });
 
   resourceManager.on("escalation_required", (data) => {
-    console.warn(`  ⚠ ESCALATION: ${data.event.resourceType} at ${data.event.currentUsagePercent}% — user prompt required`);
+    log.warn("ESCALATION required - user prompt needed", { resourceType: data.event.resourceType, usagePercent: data.event.currentUsagePercent });
   });
 
-  console.log("  ∞ Resource Manager: LOADED (polling every 5s)");
+  log.info("Resource Manager: LOADED (polling every 5s)");
 } catch (err) {
-  console.warn(`  ⚠ Resource Manager not loaded: ${err.message}`);
+  log.warn("Resource Manager not loaded", { errorMessage: err.message });
 
   // Fallback inline resource health endpoint - User-Directed Mode
   app.get("/api/resources/health", (req, res) => {
@@ -1067,9 +1071,9 @@ try {
     });
   }
 
-  console.log("  ∞ Task Scheduler: LOADED");
+  log.info("Task Scheduler: LOADED");
 } catch (err) {
-  console.warn(`  ⚠ Task Scheduler not loaded: ${err.message}`);
+  log.warn("Task Scheduler not loaded", { errorMessage: err.message });
 }
 
 // ─── Resource Diagnostics ────────────────────────────────────────────
@@ -1081,9 +1085,9 @@ try {
     taskScheduler,
   });
   registerDiagnosticRoutes(app, resourceDiagnostics);
-  console.log("  ∞ Resource Diagnostics: LOADED");
+  log.info("Resource Diagnostics: LOADED");
 } catch (err) {
-  console.warn(`  ⚠ Resource Diagnostics not loaded: ${err.message}`);
+  log.warn("Resource Diagnostics not loaded", { errorMessage: err.message });
 }
 
 // ─── Monte Carlo Plan Scheduler ──────────────────────────────────────
@@ -1097,7 +1101,7 @@ try {
 
   // Wire MC plan scheduler drift alerts into pattern engine (loaded below)
   mcPlanScheduler.on("drift:detected", (alert) => {
-    console.warn(`  ⚠ MC Drift: ${alert.taskType}/${alert.strategyId} at ${alert.medianMs}ms (target ${alert.targetMs}ms)`);
+    log.warn("MC Drift detected", { taskType: alert.taskType, strategyId: alert.strategyId, medianMs: alert.medianMs, targetMs: alert.targetMs });
   });
 
   // Bind MC global to pipeline if available
@@ -1113,18 +1117,18 @@ try {
   // Monte Carlo - SUSPENDED by default (user-directed mode)
   if (mcPlanScheduler && !suspendedProcesses.has('monte-carlo')) {
     mcPlanScheduler.setSpeedMode("on");
-    console.log("  ∞ Monte Carlo Plan Scheduler: LOADED (user-directed mode)");
+    log.info("Monte Carlo Plan Scheduler: LOADED (user-directed mode)");
   } else {
-    console.log("  ∞ Monte Carlo Plan Scheduler: SUSPENDED (user-directed mode)");
+    log.info("Monte Carlo Plan Scheduler: SUSPENDED (user-directed mode)");
   }
 
   if (mcGlobal && !suspendedProcesses.has('monte-carlo')) {
-    console.log("  ∞ Monte Carlo Global: AUTO-RUN started (60s cycles)");
+    log.info("Monte Carlo Global: AUTO-RUN started (60s cycles)");
   } else {
-    console.log("  ∞ Monte Carlo Global: SUSPENDED (user-directed mode)");
+    log.info("Monte Carlo Global: SUSPENDED (user-directed mode)");
   }
 } catch (err) {
-  console.warn(`  ⚠ Monte Carlo not loaded: ${err.message}`);
+  log.warn("Monte Carlo not loaded", { errorMessage: err.message });
 }
 
 // ─── Pattern Recognition Engine ──────────────────────────────────────
@@ -1180,9 +1184,9 @@ try {
   // Start continuous pattern analysis
   patternEngine.start();
 
-  console.log("  ∞ Pattern Engine: LOADED (30s analysis cycles)");
+  log.info("Pattern Engine: LOADED (30s analysis cycles)");
 } catch (err) {
-  console.warn(`  ⚠ Pattern Engine not loaded: ${err.message}`);
+  log.warn("Pattern Engine not loaded", { errorMessage: err.message });
 }
 
 // ─── Story Driver ────────────────────────────────────────────────────
@@ -1234,9 +1238,9 @@ try {
     });
   }
 
-  console.log("  ∞ Story Driver: LOADED");
+  log.info("Story Driver: LOADED");
 } catch (err) {
-  console.warn(`  ⚠ Story Driver not loaded: ${err.message}`);
+  log.warn("Story Driver not loaded", { errorMessage: err.message });
 }
 
 // ─── Self-Critique & Optimization Engine ─────────────────────────────
@@ -1269,10 +1273,10 @@ try {
     });
   }
 
-  console.log("  ∞ Self-Critique Engine: LOADED");
-  console.log("    → Endpoints: /api/self/*, /api/pricing/*");
+  log.info("Self-Critique Engine: LOADED");
+  log.info("Self-Critique endpoints: /api/self/*, /api/pricing/*");
 } catch (err) {
-  console.warn(`  ⚠ Self-Critique Engine not loaded: ${err.message}`);
+  log.warn("Self-Critique Engine not loaded", { errorMessage: err.message });
 }
 
 // ─── Auto-Task Conversion Hook ──────────────────────────────────────
@@ -1285,7 +1289,7 @@ function setupAutoTaskConversion() {
         : 'medium';
       const taskId = `rec-${Date.now()}`;
       const text = typeof recommendation === 'string' ? recommendation : (recommendation.text || 'auto-task');
-      console.log(`[AutoTask] Task ${taskId}: ${text} (${priority})`);
+      log.info(`AutoTask created`, { taskId, text, priority });
 
       if (storyDriver) {
         storyDriver.ingestSystemEvent({
@@ -1295,7 +1299,7 @@ function setupAutoTaskConversion() {
         });
       }
     } catch (err) {
-      console.warn(`[AutoTask] Failed: ${err.message}`);
+      log.warn("AutoTask failed", { errorMessage: err.message });
     }
   });
 }
@@ -1311,9 +1315,9 @@ try {
     patternEngine: patternEngine || null,
     selfCritique: selfCritiqueEngine || null,
   });
-  console.log("  ∞ Pipeline bound to MC + Patterns + Self-Critique");
+  log.info("Pipeline bound to MC + Patterns + Self-Critique");
 } catch (err) {
-  console.warn(`  ⚠ Pipeline bind failed: ${err.message}`);
+  log.warn("Pipeline bind failed", { errorMessage: err.message });
 }
 
 // ─── Continuous Improvement Scheduler ─────────────────────────────────
@@ -1331,10 +1335,10 @@ try {
 
   // Start the scheduler
   improvementScheduler.start();
-  
-  console.log("  ∞ Improvement Scheduler: LOADED (15m cycles)");
+
+  log.info("Improvement Scheduler: LOADED (15m cycles)");
 } catch (err) {
-  console.warn(`  ⚠ Improvement Scheduler not loaded: ${err.message}`);
+  log.warn("Improvement Scheduler not loaded", { errorMessage: err.message });
 }
 
 // ─── HCSysOrchestrator — Multi-Brain Task Router ────────────────────
@@ -1342,10 +1346,10 @@ let orchestratorRoutes = null;
 try {
   orchestratorRoutes = require("./services/orchestrator/hc_sys_orchestrator");
   app.use("/api/orchestrator", orchestratorRoutes);
-  console.log("  ∞ HCSysOrchestrator: LOADED");
-  console.log("    → Endpoints: /api/orchestrator/health, /route, /brains, /layers, /contract, /rebuild-status");
+  log.info("HCSysOrchestrator: LOADED");
+  log.info("HCSysOrchestrator endpoints available: /api/orchestrator/health, /route, /brains, /layers, /contract, /rebuild-status");
 } catch (err) {
-  console.warn(`  ⚠ HCSysOrchestrator not loaded: ${err.message}`);
+  log.warn("HCSysOrchestrator not loaded", { errorMessage: err.message });
 }
 
 // ─── HeadyBrain API — Per-Layer Intelligence ────────────────────────
@@ -1353,9 +1357,9 @@ let brainApiRoutes = null;
 try {
   brainApiRoutes = require("./services/orchestrator/brain_api");
   app.use("/api/brain", brainApiRoutes);
-  console.log("  ∞ HeadyBrain API: LOADED");
-  console.log("    → Endpoints: /api/brain/health, /plan, /feedback, /status");
-  
+  log.info("HeadyBrain API: LOADED");
+  log.info("HeadyBrain API endpoints available: /api/brain/health, /plan, /feedback, /status");
+
   // Initialize BrainConnector for 100% uptime
   const { getBrainConnector } = require("./src/brain_connector");
   const brainConnector = getBrainConnector({
@@ -1365,23 +1369,23 @@ try {
   
   // Monitor brain connector events
   brainConnector.on('circuitBreakerOpen', (data) => {
-    console.warn(`  ⚠ Brain circuit breaker OPEN: ${data.endpointId} (${data.failures} failures)`);
+    log.warn("Brain circuit breaker OPEN", { endpointId: data.endpointId, failures: data.failures });
   });
-  
+
   brainConnector.on('allEndpointsFailed', (data) => {
-    console.error(`  🚨 ALL BRAIN ENDPOINTS FAILED! Using fallback mode.`);
+    log.error("ALL BRAIN ENDPOINTS FAILED! Using fallback mode");
   });
-  
+
   brainConnector.on('healthCheck', (results) => {
     const healthy = Array.from(results.entries()).filter(([_, r]) => r.status === 'healthy').length;
     if (healthy < results.size) {
-      console.warn(`  ⚠ Brain health check: ${healthy}/${results.size} endpoints healthy`);
+      log.warn("Brain health check degraded", { healthyEndpoints: healthy, totalEndpoints: results.size });
     }
   });
-  
-  console.log("  ∞ BrainConnector: ACTIVE (100% uptime guarantee)");
+
+  log.info("BrainConnector: ACTIVE (100% uptime guarantee)");
 } catch (err) {
-  console.warn(`  ⚠ HeadyBrain API not loaded: ${err.message}`);
+  log.warn("HeadyBrain API not loaded", { errorMessage: err.message });
 }
 
 // ─── HeadyBuddy API ─────────────────────────────────────────────────
@@ -1665,7 +1669,7 @@ app.post("/api/buddy/pipeline/continuous", (req, res) => {
 
     // Checkpoint validation logged (async — avoids blocking the event loop)
     if (fs.existsSync(path.join(__dirname, 'scripts', 'checkpoint-validation.ps1'))) {
-      console.log(`[Pipeline] Checkpoint validation available (cycle ${continuousPipeline.cycleCount})`);
+      log.info("Checkpoint validation available", { cycleCount: continuousPipeline.cycleCount });
     }
   };
 
@@ -1779,7 +1783,7 @@ try {
     registerCloudflareRoutes(app, cfManager);
   }
 } catch (err) {
-  console.warn(`  ⚠ Secrets/Cloudflare routes not registered: ${err.message}`);
+  log.warn("Secrets/Cloudflare routes not registered", { errorMessage: err.message });
 }
 
 // ─── Layer Management ─────────────────────────────────────────────────
@@ -1861,9 +1865,9 @@ const alohaState = {
   deOptChecks: 0,
 };
 
-if (alohaProtocol) console.log("  \u221e Aloha Protocol: LOADED (always-on)");
-if (deOptProtocol) console.log("  \u221e De-Optimization Protocol: LOADED (simplicity > speed)");
-if (stabilityFirst) console.log("  \u221e Stability First: LOADED (the canoe must not sink)");
+if (alohaProtocol) log.info("Aloha Protocol: LOADED (always-on)");
+if (deOptProtocol) log.info("De-Optimization Protocol: LOADED (simplicity > speed)");
+if (stabilityFirst) log.info("Stability First: LOADED (the canoe must not sink)");
 
 /**
  * @swagger
@@ -2025,7 +2029,7 @@ app.post("/api/aloha/crash-report", (req, res) => {
   }
 
   // Crash threshold — 3+ crashes in 1 hour triggers emergency stability
-  console.warn(`[ALOHA CRASH REPORT] ${report.id}: ${report.description} (${report.severity})`);
+  log.warn("ALOHA CRASH REPORT", { reportId: report.id, description: report.description, severity: report.severity });
   const recentCrashes = alohaState.crashReports.filter(r =>
     new Date(r.ts) > new Date(Date.now() - 3600000)
   );
@@ -2034,7 +2038,7 @@ app.post("/api/aloha/crash-report", (req, res) => {
   if (recentCrashes.length >= 3) {
     alohaState.mode = "emergency_stability";
     emergencyActivated = true;
-    console.error("[ALOHA] Emergency stability mode activated - multiple crashes detected");
+    log.error("ALOHA Emergency stability mode activated - multiple crashes detected");
 
     if (resourceManager && !resourceManager.safeMode) {
       try { resourceManager.enterSafeMode("aloha_crash_threshold"); } catch (e) { /* safe */ }
@@ -2144,33 +2148,387 @@ app.use('/api/access-points', (req, res) => {
 try {
   const headybuddyConfigRouter = require('./services/core-api/routes/headybuddy-config');
   app.use('/api/headybuddy-config', headybuddyConfigRouter);
-  console.log("  ∞ HeadyBuddy Config Routes: LOADED");
+  log.info("HeadyBuddy Config Routes: LOADED");
 } catch (err) {
-  console.warn(`  ⚠ HeadyBuddy Config routes not loaded: ${err.message}`);
+  log.warn("HeadyBuddy Config routes not loaded", { errorMessage: err.message });
 }
 
 try {
   const { router: authRouter } = require('./src/routes/auth-routes');
   app.use('/api/auth', authRouter);
-  console.log("  ∞ Auth Routes: LOADED");
+  log.info("Auth Routes: LOADED");
 } catch (err) {
-  console.warn(`  \u26a0 Auth routes not loaded: ${err.message}`);
+  log.warn("Auth routes not loaded", { errorMessage: err.message });
 }
 
 // (Layer management routes already registered above at /api/layer)
 
-// ─── Liquid Nodes Status ────────────────────────────────────────────
+// ─── Notification Service ─────────────────────────────────────────
+try {
+  const { router: notificationRouter } = require('./src/routes/notification-routes');
+  app.use('/api/notifications', notificationRouter);
+  log.info("Notification Service: LOADED");
+} catch (err) {
+  log.warn("Notification routes not loaded", { errorMessage: err.message });
+}
+
+// ─── Analytics Service (Privacy-First) ────────────────────────────
+try {
+  const { router: analyticsRouter } = require('./src/routes/analytics-routes');
+  app.use('/api/analytics', analyticsRouter);
+  log.info("Analytics Service: LOADED");
+} catch (err) {
+  log.warn("Analytics routes not loaded", { errorMessage: err.message });
+}
+
+// ─── Liquid Nodes System ───────────────────────────────────────────
+// φ-scaled constants for health checks and timeouts
+const PHI = 1.618;
+const LIQUID_NODES_HEALTH_TIMEOUT = Math.round(1618); // 1.618 seconds
+
+// Comprehensive liquid nodes registry, grouped by domain
+const LIQUID_NODES_REGISTRY = {
+  'ai-llm': [
+    {
+      name: 'anthropic',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['ANTHROPIC_API_KEY'],
+      capabilities: ['text-generation', 'vision', 'function-calling', 'batch-processing'],
+      description: 'Claude API for text generation and reasoning'
+    },
+    {
+      name: 'openai',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['OPENAI_API_KEY'],
+      capabilities: ['gpt-4', 'gpt-3.5-turbo', 'embeddings', 'moderation'],
+      description: 'OpenAI GPT models and embedding API'
+    },
+    {
+      name: 'groq',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['GROQ_API_KEY'],
+      capabilities: ['fast-inference', 'llama', 'mixtral'],
+      description: 'Groq fast LLM inference'
+    },
+    {
+      name: 'perplexity',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['PERPLEXITY_API_KEY'],
+      capabilities: ['web-search-llm', 'reasoning'],
+      description: 'Perplexity AI with web search capabilities'
+    },
+    {
+      name: 'huggingface',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['HF_TOKEN'],
+      capabilities: ['model-hosting', 'inference', 'fine-tuning'],
+      description: 'Hugging Face model hub and inference API'
+    },
+    {
+      name: 'gemini',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['GEMINI_API_KEY'],
+      capabilities: ['multimodal', 'vision', 'text-generation'],
+      description: 'Google Gemini API'
+    },
+    {
+      name: 'vertex-ai',
+      domain: 'ai-llm',
+      port: null,
+      envKeys: ['GCLOUD_ACCESS_TOKEN'],
+      capabilities: ['models', 'endpoints', 'predict', 'custom-training'],
+      description: 'Google Cloud Vertex AI platform'
+    }
+  ],
+  'infrastructure': [
+    {
+      name: 'postgres',
+      domain: 'infrastructure',
+      port: 5432,
+      envKeys: ['DATABASE_URL'],
+      capabilities: ['relational-db', 'transactions', 'json-support'],
+      description: 'Primary PostgreSQL database'
+    },
+    {
+      name: 'neon',
+      domain: 'infrastructure',
+      port: null,
+      envKeys: ['NEON_API_KEY'],
+      capabilities: ['serverless-postgres', 'branching', 'autoscaling'],
+      description: 'Neon serverless PostgreSQL'
+    },
+    {
+      name: 'upstash-redis',
+      domain: 'infrastructure',
+      port: null,
+      envKeys: ['UPSTASH_REDIS_REST_URL'],
+      capabilities: ['redis', 'caching', 'sessions', 'rate-limiting'],
+      description: 'Upstash serverless Redis'
+    },
+    {
+      name: 'firebase',
+      domain: 'infrastructure',
+      port: null,
+      envKeys: ['FIREBASE_API_KEY'],
+      capabilities: ['realtime-db', 'firestore', 'auth', 'storage'],
+      description: 'Google Firebase platform'
+    },
+    {
+      name: 'pinecone',
+      domain: 'infrastructure',
+      port: null,
+      envKeys: ['PINECONE_API_KEY'],
+      capabilities: ['vector-db', 'semantic-search', 'rag'],
+      description: 'Pinecone vector database'
+    },
+    {
+      name: 'pgvector',
+      domain: 'infrastructure',
+      port: 5432,
+      envKeys: ['DATABASE_URL'],
+      capabilities: ['vector-extension', 'embeddings', 'similarity-search'],
+      description: 'PostgreSQL pgvector extension (same as postgres)'
+    }
+  ],
+  'cloud-deploy': [
+    {
+      name: 'cloudflare',
+      domain: 'cloud-deploy',
+      port: null,
+      envKeys: ['CLOUDFLARE_API_TOKEN'],
+      capabilities: ['zones', 'dns', 'workers', 'pages', 'durable-objects'],
+      description: 'Cloudflare edge network and workers'
+    },
+    {
+      name: 'sentry',
+      domain: 'cloud-deploy',
+      port: null,
+      envKeys: ['SENTRY_AUTH_TOKEN'],
+      capabilities: ['error-tracking', 'performance-monitoring', 'release-tracking'],
+      description: 'Sentry error and performance monitoring'
+    },
+    {
+      name: 'render',
+      domain: 'cloud-deploy',
+      port: null,
+      envKeys: ['RENDER_API_KEY'],
+      capabilities: ['deployment', 'autoscaling', 'databases', 'services'],
+      description: 'Render.com deployment platform'
+    }
+  ],
+  'scm': [
+    {
+      name: 'github',
+      domain: 'scm',
+      port: null,
+      envKeys: ['GITHUB_TOKEN'],
+      capabilities: ['repos', 'code-search', 'gists', 'issues', 'pull-requests'],
+      description: 'GitHub primary repository and API access'
+    },
+    {
+      name: 'github-secondary',
+      domain: 'scm',
+      port: null,
+      envKeys: ['GITHUB_TOKEN_SECONDARY'],
+      capabilities: ['repos', 'code-search', 'gists', 'mirror-operations'],
+      description: 'GitHub secondary token for multi-account operations'
+    }
+  ],
+  'finance': [
+    {
+      name: 'stripe',
+      domain: 'finance',
+      port: null,
+      envKeys: ['STRIPE_SECRET_KEY'],
+      capabilities: ['payments', 'subscriptions', 'invoicing', 'webhooks'],
+      description: 'Stripe payment processing and subscription management'
+    }
+  ],
+  'auth': [
+    {
+      name: 'heady-auth',
+      domain: 'auth',
+      port: null,
+      envKeys: ['HEADY_API_KEY'],
+      capabilities: ['api-authentication', 'service-identity', 'key-rotation'],
+      description: 'Heady system internal authentication'
+    },
+    {
+      name: 'admin',
+      domain: 'auth',
+      port: null,
+      envKeys: ['ADMIN_TOKEN'],
+      capabilities: ['admin-access', 'governance-checks', 'system-control'],
+      description: 'Administrator access token'
+    }
+  ],
+  'latent-space-ops': [
+    {
+      name: 'colab-1',
+      domain: 'latent-space-ops',
+      port: null,
+      envKeys: [],
+      capabilities: ['notebook-runtime', 'gpu-access', 'code-execution'],
+      description: 'Google Colab Pro+ membership slot 1',
+      status: 'runtime'
+    },
+    {
+      name: 'colab-2',
+      domain: 'latent-space-ops',
+      port: null,
+      envKeys: [],
+      capabilities: ['notebook-runtime', 'gpu-access', 'code-execution'],
+      description: 'Google Colab Pro+ membership slot 2',
+      status: 'runtime'
+    },
+    {
+      name: 'colab-3',
+      domain: 'latent-space-ops',
+      port: null,
+      envKeys: [],
+      capabilities: ['notebook-runtime', 'gpu-access', 'code-execution'],
+      description: 'Google Colab Pro+ membership slot 3',
+      status: 'runtime'
+    },
+    {
+      name: 'latent-vector-store',
+      domain: 'latent-space-ops',
+      port: null,
+      envKeys: [],
+      capabilities: ['store', 'search', 'list', 'delete', 'semantic-queries'],
+      description: 'Latent space vector memory and semantic storage',
+      status: 'active'
+    }
+  ]
+};
+
+// Compute status for each node based on environment variables
+function computeNodeStatus(node) {
+  if (node.status) return node.status; // Colab and latent-space have hardcoded status
+  if (!node.envKeys || node.envKeys.length === 0) return 'unknown';
+  const hasAnyKey = node.envKeys.some(key => !!process.env[key]);
+  return hasAnyKey ? 'connected' : 'needs_token';
+}
+
+// GET /api/liquid-nodes - Full registry with all nodes
 app.get('/api/liquid-nodes', (req, res) => {
-  const nodes = [
-    { name: 'github', status: process.env.GITHUB_TOKEN ? 'connected' : 'needs_token', capabilities: ['repos', 'code-search', 'gists'] },
-    { name: 'cloudflare', status: process.env.CLOUDFLARE_API_TOKEN ? 'connected' : 'needs_token', capabilities: ['zones', 'dns', 'workers', 'pages'] },
-    { name: 'vertex-ai', status: process.env.GCLOUD_ACCESS_TOKEN ? 'connected' : 'needs_token', capabilities: ['models', 'endpoints', 'predict'] },
-    { name: 'ai-studio', status: process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_KEY ? 'connected' : 'needs_token', capabilities: ['generate'] },
-    { name: 'colab', status: 'needs_oauth', capabilities: ['notebooks'] },
-    { name: 'latent-space', status: 'active', capabilities: ['store', 'search', 'list', 'delete'] },
-  ];
-  const active = nodes.filter(n => n.status === 'connected' || n.status === 'active').length;
-  res.json({ nodes, summary: { total: nodes.length, active, needsConfig: nodes.length - active }, ts: new Date().toISOString() });
+  try {
+    const allNodes = [];
+    for (const [domain, nodes] of Object.entries(LIQUID_NODES_REGISTRY)) {
+      for (const node of nodes) {
+        allNodes.push({
+          ...node,
+          status: computeNodeStatus(node)
+        });
+      }
+    }
+    const active = allNodes.filter(n => n.status === 'connected' || n.status === 'active' || n.status === 'runtime').length;
+    const summary = {
+      total: allNodes.length,
+      active,
+      needsConfig: allNodes.filter(n => n.status === 'needs_token').length,
+      runtime: allNodes.filter(n => n.status === 'runtime').length,
+      unknown: allNodes.filter(n => n.status === 'unknown').length,
+      byDomain: {}
+    };
+    for (const domain of Object.keys(LIQUID_NODES_REGISTRY)) {
+      const domainNodes = allNodes.filter(n => n.domain === domain);
+      summary.byDomain[domain] = {
+        total: domainNodes.length,
+        active: domainNodes.filter(n => n.status === 'connected' || n.status === 'active' || n.status === 'runtime').length
+      };
+    }
+    res.json({ nodes: allNodes, summary, ts: new Date().toISOString() });
+  } catch (err) {
+    log.error('Error in /api/liquid-nodes', { errorMessage: err.message, errorStack: err.stack });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/liquid-nodes/:domain - Filter nodes by domain
+app.get('/api/liquid-nodes/:domain', (req, res) => {
+  try {
+    const { domain } = req.params;
+    const domainNodes = LIQUID_NODES_REGISTRY[domain];
+    if (!domainNodes) {
+      return res.status(404).json({ error: `Domain '${domain}' not found`, validDomains: Object.keys(LIQUID_NODES_REGISTRY) });
+    }
+    const nodes = domainNodes.map(node => ({
+      ...node,
+      status: computeNodeStatus(node)
+    }));
+    const active = nodes.filter(n => n.status === 'connected' || n.status === 'active' || n.status === 'runtime').length;
+    res.json({
+      domain,
+      nodes,
+      summary: {
+        total: nodes.length,
+        active,
+        needsConfig: nodes.filter(n => n.status === 'needs_token').length
+      },
+      ts: new Date().toISOString()
+    });
+  } catch (err) {
+    log.error('Error in /api/liquid-nodes/:domain', { errorMessage: err.message, errorStack: err.stack });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/liquid-nodes/health/check - Health check and connectivity validation
+app.get('/api/liquid-nodes/health/check', (req, res) => {
+  try {
+    const healthResults = {
+      timestamp: new Date().toISOString(),
+      timeout: LIQUID_NODES_HEALTH_TIMEOUT,
+      nodes: {},
+      summary: {
+        healthy: 0,
+        unhealthy: 0,
+        unchecked: 0,
+        errors: []
+      }
+    };
+
+    // Check only connected nodes (skip needs_token, runtime, and unknown)
+    const allNodes = [];
+    for (const [domain, nodes] of Object.entries(LIQUID_NODES_REGISTRY)) {
+      for (const node of nodes) {
+        allNodes.push({ ...node, domain });
+      }
+    }
+
+    for (const node of allNodes) {
+      const status = computeNodeStatus(node);
+
+      if (status === 'needs_token') {
+        healthResults.nodes[node.name] = { status: 'unconfigured', reason: 'missing_env_key' };
+        healthResults.summary.unchecked++;
+      } else if (status === 'runtime' || status === 'active' || status === 'unknown') {
+        healthResults.nodes[node.name] = { status: 'not_checked', reason: status === 'runtime' ? 'runtime_node' : status === 'active' ? 'always_active' : 'unknown_status' };
+        healthResults.summary.unchecked++;
+      } else if (status === 'connected') {
+        // For now, mark as healthy if token exists; real endpoint testing would happen here
+        healthResults.nodes[node.name] = {
+          status: 'healthy',
+          port: node.port,
+          capabilities: node.capabilities.length,
+          lastCheck: new Date().toISOString()
+        };
+        healthResults.summary.healthy++;
+      }
+    }
+
+    res.json(healthResults);
+  } catch (err) {
+    log.error('Error in /api/liquid-nodes/health/check', { errorMessage: err.message, errorStack: err.stack });
+    res.status(500).json({ error: err.message, timestamp: new Date().toISOString() });
+  }
 });
 
 // ─── HeadyVault Status ──────────────────────────────────────────────
@@ -2248,7 +2606,7 @@ app.get('/api/readiness', (req, res) => {
 
 // ─── Error Handler ──────────────────────────────────────────────────
 app.use((err, req, res, next) => {
-  console.error("HeadyManager Error:", err);
+  log.error("HeadyManager Error", { errorMessage: err.message, errorStack: err.stack });
   res.status(500).json({
     error: "Internal server error",
     message: process.env.NODE_ENV === "development" ? err.message : "Something went wrong",
@@ -2268,16 +2626,16 @@ app.use((req, res) => {
 
 // ─── Start ──────────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n  ∞ Heady Manager v3.0.0 listening on port ${PORT}`);
-  console.log(`  ∞ Health: https://headysystems.com/api/health (port ${PORT})`);
-  console.log(`  ∞ Environment: ${process.env.NODE_ENV || "development"}\n`);
+  log.info(`Heady Manager v3.0.0 listening`, { port: PORT });
+  log.info(`Health check available`, { port: PORT });
+  log.info(`Environment: ${process.env.NODE_ENV || "development"}`);
 });
 
 try {
   const { startBrandingMonitor } = require('./src/self-awareness');
   startBrandingMonitor();
-  console.log("  \u221e Branding Monitor: STARTED");
+  log.info("Branding Monitor: STARTED");
 } catch (err) {
-  console.warn(`  \u26a0 Branding Monitor not loaded: ${err.message}`);
+  log.warn("Branding Monitor not loaded", { errorMessage: err.message });
 }
 

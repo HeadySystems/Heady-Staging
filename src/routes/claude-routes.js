@@ -17,8 +17,10 @@
 
 const express = require('express');
 const crypto = require('crypto');
+const { createLogger } = require('../../packages/structured-logger');
 
 const router = express.Router();
+const log = createLogger('claude', 'claude-routes');
 
 // ─────────────────────────────────────────────────────────────────────────
 // LOAD CLAUDE MODULES (with graceful fallback)
@@ -31,14 +33,14 @@ try {
   const { ClaudeCodeAgent } = require('../agents/claude-code-agent');
   claudeAgent = new ClaudeCodeAgent();
 } catch (err) {
-  console.warn(`[claude-routes] Failed to load claude-code-agent: ${err.message}`);
+  log.warn('Failed to load claude-code-agent', { errorMessage: err.message });
   claudeAgent = null;
 }
 
 try {
   hcClaudeAgent = require('../hc_claude_agent');
 } catch (err) {
-  console.warn(`[claude-routes] Failed to load hc_claude_agent: ${err.message}`);
+  log.warn('Failed to load hc_claude_agent', { errorMessage: err.message });
   hcClaudeAgent = null;
 }
 
@@ -141,7 +143,7 @@ router.get('/status', (req, res) => {
 
     res.json(status);
   } catch (error) {
-    console.error('[claude-routes] GET /status error:', error);
+    log.error('GET /status error', { errorMessage: error.message, errorStack: error.stack });
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -218,7 +220,7 @@ router.post('/', requireApiKey, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('[claude-routes] POST / error:', error);
+    log.error('POST / error', { errorMessage: error.message, errorStack: error.stack });
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -266,7 +268,7 @@ router.post('/analyze', requireApiKey, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('[claude-routes] POST /analyze error:', error);
+    log.error('POST /analyze error', { errorMessage: error.message, errorStack: error.stack });
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -305,7 +307,7 @@ router.post('/security', requireApiKey, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('[claude-routes] POST /security error:', error);
+    log.error('POST /security error', { errorMessage: error.message, errorStack: error.stack });
     res.status(500).json({
       status: 'error',
       message: error.message,
@@ -372,7 +374,7 @@ router.post('/refactor', requireApiKey, async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('[claude-routes] POST /refactor error:', error);
+    log.error('POST /refactor error', { errorMessage: error.message, errorStack: error.stack });
     res.status(500).json({
       status: 'error',
       message: error.message,

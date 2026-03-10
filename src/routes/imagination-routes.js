@@ -16,7 +16,10 @@
 // HEADY_BRAND:END
 
 const express = require('express');
+const { createLogger } = require('../../packages/structured-logger');
+
 const router = express.Router();
+const log = createLogger('imagination', 'imagination');
 
 // ═════════════════════════════════════════════════════════════════════════════
 // LOAD IMAGINATION ENGINE MODULES (with graceful fallback)
@@ -30,21 +33,21 @@ try {
   const { imagination: img } = require('../hc_imagination');
   imagination = img;
 } catch (e) {
-  console.warn('[Routes] Imagination Engine not available:', e.message);
+  log.warn('Imagination Engine not available', { errorMessage: e.message });
 }
 
 try {
   const { imaginationLLM: llm } = require('../hc_imagination_llm');
   imaginationLLM = llm;
 } catch (e) {
-  console.warn('[Routes] Imagination LLM Integration not available:', e.message);
+  log.warn('Imagination LLM Integration not available', { errorMessage: e.message });
 }
 
 try {
   const { imaginationPatternIntegration: patInteg } = require('../hc_imagination_pattern_integration');
   imaginationPatternIntegration = patInteg;
 } catch (e) {
-  console.warn('[Routes] Imagination Pattern Integration not available:', e.message);
+  log.warn('Imagination Pattern Integration not available', { errorMessage: e.message });
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -111,7 +114,7 @@ router.get('/status', async (req, res) => {
       patternIntegrationEnabled: imaginationPatternIntegration?.enabled || false
     });
   } catch (err) {
-    console.error('[Routes] /status error:', err);
+    log.error('/status error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to get status', {
       error: err.message
     });
@@ -150,7 +153,7 @@ router.post('/generate', async (req, res) => {
       }))
     });
   } catch (err) {
-    console.error('[Routes] /generate error:', err);
+    log.error('/generate error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to generate concepts', {
       error: err.message
     });
@@ -243,7 +246,7 @@ router.post('/expand', async (req, res) => {
       }))
     });
   } catch (err) {
-    console.error('[Routes] /expand error:', err);
+    log.error('/expand error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to expand concept', {
       error: err.message
     });
@@ -288,7 +291,7 @@ router.get('/patterns', async (req, res) => {
       emerging_patterns: patterns
     });
   } catch (err) {
-    console.error('[Routes] /patterns error:', err);
+    log.error('/patterns error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to get patterns', {
       error: err.message
     });
@@ -364,7 +367,7 @@ router.post('/integrate', async (req, res) => {
 
     return successResponse(res, 200, results);
   } catch (err) {
-    console.error('[Routes] /integrate error:', err);
+    log.error('/integrate error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to integrate patterns', {
       error: err.message
     });
@@ -409,7 +412,7 @@ router.get('/concepts/:id', async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('[Routes] /concepts/:id error:', err);
+    log.error('/concepts/:id error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to get concept', {
       error: err.message
     });
@@ -449,7 +452,7 @@ router.get('/top', async (req, res) => {
       }))
     });
   } catch (err) {
-    console.error('[Routes] /top error:', err);
+    log.error('/top error', { errorMessage: err.message, errorStack: err.stack });
     return errorResponse(res, 500, 'Failed to get top concepts', {
       error: err.message
     });
