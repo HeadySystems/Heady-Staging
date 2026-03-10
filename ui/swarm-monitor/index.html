@@ -69,16 +69,23 @@
       'use strict';
       const PHI = 1.618; const PSI = 0.618; const PSI2 = PSI * PSI;
 
-      const SWARMS = [
+      const DEFAULT_SWARMS = [
         'Deploy', 'Battle', 'Research', 'Security', 'Memory',
         'Creative', 'Trading', 'Health', 'Governance', 'Documentation',
         'Testing', 'Migration', 'Monitoring', 'Cleanup', 'Onboarding',
         'Analytics', 'Emergency'
-      ];
-
-      function randomBees(min, max) {
-        return min + Math.floor(Math.random() * (max - min));
-      }
+      ].map((name, i) => {
+        const utilization = Math.random() * 0.8;
+        const beeCount = 2 + Math.floor(Math.random() * 6);
+        return {
+           name: name,
+           beeCount: beeCount,
+           utilization: utilization,
+           idleBees: Math.floor(beeCount * (1 - utilization)),
+           workingBees: beeCount - Math.floor(beeCount * (1 - utilization)),
+           tasks: Math.floor(Math.random() * 50)
+        };
+      });
 
       function classifyPressure(ratio) {
         if (ratio < PSI2) return 'nominal';
@@ -87,18 +94,19 @@
         return 'critical';
       }
 
-      function renderSwarms() {
+      function renderSwarms(data) {
         const grid = document.getElementById('swarm-grid');
-        let totalBees = 0;
+        let swarms = data.swarms || [];
+        if (swarms.length === 0) swarms = DEFAULT_SWARMS;
 
-        grid.innerHTML = SWARMS.map(name => {
-          const beeCount = randomBees(2, 8);
-          totalBees += beeCount;
-          const utilization = Math.random() * 0.8;
-          const pressure = classifyPressure(utilization);
-          const idleBees = Math.floor(beeCount * (1 - utilization));
-          const workingBees = beeCount - idleBees;
-          const tasks = Math.floor(Math.random() * 50);
+        grid.innerHTML = swarms.map(swarm => {
+          const name = swarm.name;
+          const beeCount = swarm.beeCount;
+          const utilization = swarm.utilization;
+          const pressure = swarm.pressure || classifyPressure(utilization);
+          const idleBees = swarm.idleBees;
+          const workingBees = swarm.workingBees;
+          const tasks = swarm.tasks;
 
           return '<div class="swarm-card">' +
             '<div class="swarm-name">' + name + ' Swarm</div>' +
@@ -115,11 +123,35 @@
           '</div>';
         }).join('');
 
+        const mesh = data.meshStatus || { count: swarms.length, totalBees: 0, status: 'NOMINAL' };
         document.getElementById('mesh-status').textContent =
-          SWARMS.length + ' Swarms \u00b7 ' + totalBees + ' Bees \u00b7 NOMINAL';
+          mesh.count + ' Swarms \u00b7 ' + mesh.totalBees + ' Bees \u00b7 ' + mesh.status;
       }
 
-      document.addEventListener('DOMContentLoaded', renderSwarms);
+      document.addEventListener('DOMContentLoaded', function() {
+        renderSwarms({ swarms: DEFAULT_SWARMS }); // render fallback initially
+
+        const apiUrl = "/api/swarms";
+
+        function fetchSwarms() {
+          fetch(apiUrl)
+            .then(res => {
+               if(!res.ok) throw new Error("API Offline");
+               return res.json();
+            })
+            .then(data => {
+               if (data.swarms && data.swarms.length > 0) {
+                 renderSwarms(data);
+               }
+            })
+            .catch(err => {
+               console.warn("Swarms API offline, using fallback.", err);
+            });
+        }
+
+        fetchSwarms();
+        setInterval(fetchSwarms, 5000);
+      });
     })();
   </script>
 </body>
