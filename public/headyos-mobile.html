@@ -2,878 +2,1519 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HeadyOS Mobile - Sacred AI Shell</title>
-    <link rel="stylesheet" href="../../sacred-geometry.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a0a1a">
+    <title>HeadyOS Mobile</title>
+    <link rel="stylesheet" href="/sacred-geometry.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
+        /* Mobile App Container */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--heady-void);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, var(--heady-void) 0%, var(--heady-deep-space) 50%, var(--heady-nebula) 100%);
             color: var(--heady-white);
+            display: flex;
+            flex-direction: column;
             height: 100vh;
-            overflow: hidden;
             position: relative;
+            overflow-y: auto;
         }
 
-        /* Sacred Mobile Background */
-        .mobile-sacred-bg {
-            position: fixed;
-            inset: 0;
-            background: 
-                radial-gradient(circle at 30% 20%, rgba(0, 217, 255, 0.12) 0%, transparent 50%),
-                radial-gradient(circle at 70% 80%, rgba(255, 0, 160, 0.08) 0%, transparent 50%),
-                radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05) 0%, transparent 70%),
-                linear-gradient(180deg, var(--heady-deep-space) 0%, var(--heady-void) 100%);
-        }
-
-        /* Status Bar */
+        /* Status Bar - Top 44px */
         .status-bar {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 1000;
-            background: linear-gradient(to bottom, rgba(10,10,26,0.9), transparent);
-        }
-
-        .status-time {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--heady-white);
-        }
-
-        .status-icons {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 14px;
-        }
-
-        /* Floating Orb - Mobile Optimized */
-        .mobile-orb-container {
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-            z-index: 999;
-        }
-
-        .mobile-orb {
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: conic-gradient(from 0deg, var(--heady-cyan), var(--heady-magenta), var(--heady-gold), var(--heady-cyan));
-            box-shadow: 
-                0 0 30px rgba(0, 217, 255, 0.5),
-                0 4px 20px rgba(0, 0, 0, 0.4);
-            animation: breathe 3s ease-in-out infinite;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            padding: 0 16px;
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
             position: relative;
-        }
-
-        .mobile-orb::before {
-            content: '';
-            position: absolute;
-            inset: 6px;
-            border-radius: 50%;
-            background: var(--heady-void);
-        }
-
-        .mobile-orb::after {
-            content: '✦';
-            position: relative;
-            font-size: 28px;
-            color: var(--heady-gold);
-            text-shadow: 0 0 20px rgba(212, 175, 55, 0.8);
-        }
-
-        .mobile-orb.pulse {
-            animation: breathe 3s ease-in-out infinite, orb-pulse 0.5s ease;
-        }
-
-        @keyframes orb-pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-        }
-
-        /* Agent Panel Grid */
-        .agent-grid {
-            position: fixed;
-            bottom: 180px;
-            right: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            opacity: 0;
-            transform: translateY(20px);
-            pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .agent-grid.visible {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
-
-        .agent-mini {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 14px;
-            background: rgba(26, 26, 62, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            border-radius: 24px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-            font-size: 13px;
-            font-weight: 500;
-            animation: slide-in-right 0.3s ease backwards;
-        }
-
-        .agent-mini:nth-child(1) { animation-delay: 0.05s; }
-        .agent-mini:nth-child(2) { animation-delay: 0.1s; }
-        .agent-mini:nth-child(3) { animation-delay: 0.15s; }
-        .agent-mini:nth-child(4) { animation-delay: 0.2s; }
-
-        @keyframes slide-in-right {
-            from { opacity: 0; transform: translateX(30px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        .agent-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(255, 0, 160, 0.2));
-        }
-
-        .agent-mini.active {
-            border-color: var(--heady-gold);
-            background: rgba(212, 175, 55, 0.15);
-        }
-
-        .agent-mini.active .agent-icon {
-            background: linear-gradient(135deg, var(--heady-cyan), var(--heady-magenta));
-        }
-
-        /* Main Chat Sheet */
-        .chat-sheet {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 85vh;
-            background: rgba(10, 10, 26, 0.98);
-            backdrop-filter: blur(30px);
-            border-radius: 28px 28px 0 0;
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex;
-            flex-direction: column;
             z-index: 100;
-            overflow: hidden;
+            flex-shrink: 0;
         }
 
-        .chat-sheet.open {
-            transform: translateY(0);
-        }
-
-        .sheet-handle {
-            width: 40px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-            margin: 12px auto;
-        }
-
-        .sheet-header {
-            padding: 0 20px 16px;
+        .status-left {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-        }
-
-        .sheet-title {
-            font-size: 18px;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sheet-title .orb-small {
-            width: 28px;
-            height: 28px;
-            border-radius: 50%;
-            background: conic-gradient(from 0deg, var(--heady-cyan), var(--heady-magenta), var(--heady-gold));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-        }
-
-        .sheet-actions {
-            display: flex;
             gap: 8px;
         }
 
-        .sheet-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .status-logo {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--heady-gold), var(--heady-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 1px;
+        }
+
+        .status-center {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--heady-gray);
+        }
+
+        .time-display {
+            font-size: 13px;
+            font-weight: 500;
             color: var(--heady-white);
+            min-width: 35px;
+            text-align: right;
+        }
+
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00FF00;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+            animation: pulse-dot 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .connection-dot.offline {
+            background: #FF4444;
+            box-shadow: 0 0 8px rgba(255, 68, 68, 0.6);
+        }
+
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .back-home-btn {
+            width: 28px;
+            height: 28px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            border-radius: var(--radius-button);
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            color: var(--heady-gold);
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
         }
 
-        /* Messages */
-        .messages-container {
+        .back-home-btn:active {
+            background: rgba(212, 175, 55, 0.2);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        /* Main Content Area */
+        .content-container {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tab-content {
+            flex: 1;
+            display: none;
+            flex-direction: column;
             overflow-y: auto;
-            padding: 0 16px 16px;
+            scroll-behavior: smooth;
+            padding-bottom: 60px;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* Home Tab */
+        #homeTab {
+            padding: 16px 12px;
+        }
+
+        .greeting {
+            margin-bottom: 24px;
+            padding: 0 4px;
+        }
+
+        .greeting-time {
+            font-size: 32px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--heady-gold), var(--heady-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 4px;
+        }
+
+        .greeting-subtext {
+            font-size: 14px;
+            color: var(--heady-gray);
+        }
+
+        /* Health Status Card */
+        .health-card {
+            background: rgba(26, 26, 62, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .health-status-icon {
+            font-size: 28px;
+        }
+
+        .health-status-text {
+            flex: 1;
+        }
+
+        .health-status-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--heady-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .health-status-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--heady-white);
+            margin-top: 2px;
+        }
+
+        /* Quick Action Pills */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .quick-action-pill {
+            background: rgba(212, 175, 55, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 12px;
+            padding: 12px 16px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--heady-gold);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .quick-action-pill span:first-child {
+            font-size: 20px;
+        }
+
+        .quick-action-pill:active {
+            background: rgba(212, 175, 55, 0.2);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+            transform: scale(0.95);
+        }
+
+        /* Workspace Cards */
+        .workspace-section {
+            margin-bottom: 24px;
+        }
+
+        .section-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--heady-gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+        }
+
+        .workspace-scroll {
+            display: flex;
+            gap: 12px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 4px;
+            margin: 0 -4px;
+        }
+
+        .workspace-card {
+            flex-shrink: 0;
+            width: 140px;
+            background: rgba(26, 26, 62, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            scroll-snap-align: start;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .workspace-card:active {
+            transform: scale(0.95);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+
+        .workspace-icon {
+            font-size: 32px;
+        }
+
+        .workspace-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--heady-white);
+        }
+
+        .workspace-status {
+            font-size: 10px;
+            color: var(--heady-gray);
+        }
+
+        .status-badge {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00FF00;
+            box-shadow: 0 0 4px rgba(0, 255, 0, 0.6);
+        }
+
+        /* Resource Meters */
+        .resource-meters {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .resource-meter {
+            background: rgba(26, 26, 62, 0.5);
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .meter-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .meter-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--heady-gray);
+            text-transform: uppercase;
+        }
+
+        .meter-value {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--heady-white);
+        }
+
+        .meter-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--heady-cyan), var(--heady-magenta));
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        /* Agents Tab */
+        #agentsTab {
+            padding: 16px 12px;
+        }
+
+        .agent-list {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .msg-bubble {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 20px;
-            font-size: 15px;
-            line-height: 1.5;
-            animation: msg-pop 0.3s ease;
-        }
-
-        @keyframes msg-pop {
-            from { opacity: 0; transform: scale(0.9) translateY(10px); }
-            to { opacity: 1; transform: scale(1) translateY(0); }
-        }
-
-        .msg-bubble.user {
-            align-self: flex-end;
-            background: linear-gradient(135deg, rgba(0, 217, 255, 0.25), rgba(0, 217, 255, 0.08));
-            border: 1px solid rgba(0, 217, 255, 0.35);
-            border-bottom-right-radius: 6px;
-            color: var(--heady-white);
-        }
-
-        .msg-bubble.assistant {
-            align-self: flex-start;
-            background: rgba(26, 26, 62, 0.8);
-            border: 1px solid rgba(212, 175, 55, 0.25);
-            border-bottom-left-radius: 6px;
-            color: var(--heady-cream);
-        }
-
-        .msg-bubble.assistant::before {
-            content: '◆';
-            color: var(--heady-gold);
-            margin-right: 6px;
-            font-size: 10px;
-        }
-
-        /* Quick Actions Row */
-        .quick-row {
-            display: flex;
-            gap: 10px;
-            padding: 0 16px 12px;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .quick-row::-webkit-scrollbar {
-            display: none;
-        }
-
-        .quick-pill {
-            flex-shrink: 0;
-            padding: 8px 16px;
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 20px;
-            font-size: 13px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        /* Input Area */
-        .input-area {
-            padding: 12px 16px 24px;
-            background: rgba(0, 0, 0, 0.3);
-            border-top: 1px solid rgba(255, 255, 255, 0.06);
-        }
-
-        .input-wrapper {
-            display: flex;
-            align-items: flex-end;
-            gap: 10px;
-            background: rgba(26, 26, 62, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 24px;
-            padding: 8px 8px 8px 16px;
-        }
-
-        .text-input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--heady-white);
-            font-size: 16px;
-            line-height: 1.4;
-            max-height: 100px;
-            outline: none;
-            font-family: inherit;
-            padding: 6px 0;
-        }
-
-        .text-input::placeholder {
-            color: var(--heady-gray);
-        }
-
-        .input-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-            border: none;
-            color: var(--heady-gray);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-        }
-
-        .input-icon.send {
-            background: linear-gradient(135deg, var(--heady-cyan), var(--heady-magenta));
-            color: var(--heady-white);
-        }
-
-        /* Workspace Cards */
-        .workspaces-view {
-            padding: 60px 20px 100px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
-        }
-
-        .workspace-card {
-            background: rgba(26, 26, 62, 0.5);
-            backdrop-filter: blur(10px);
+        .agent-card {
+            background: rgba(26, 26, 62, 0.7);
+            backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 20px;
-            aspect-ratio: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            transition: all 0.3s;
-        }
-
-        .workspace-card:hover, .workspace-card.active {
-            background: rgba(26, 26, 62, 0.8);
-            border-color: rgba(212, 175, 55, 0.3);
-            transform: scale(1.02);
-        }
-
-        .workspace-icon {
-            width: 48px;
-            height: 48px;
             border-radius: 14px;
-            background: linear-gradient(135deg, rgba(0, 217, 255, 0.2), rgba(255, 0, 160, 0.2));
+            padding: 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .agent-card:active {
+            background: rgba(26, 26, 62, 0.9);
+            border-color: rgba(0, 217, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .agent-avatar {
+            font-size: 28px;
+            width: 50px;
+            height: 50px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            background: rgba(212, 175, 55, 0.1);
+            border-radius: 12px;
+            flex-shrink: 0;
         }
 
-        .workspace-info h3 {
-            font-size: 15px;
-            font-weight: 600;
-            margin-bottom: 4px;
+        .agent-info {
+            flex: 1;
+            min-width: 0;
         }
 
-        .workspace-info p {
+        .agent-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--heady-white);
+            margin-bottom: 2px;
+        }
+
+        .agent-desc {
             font-size: 12px;
             color: var(--heady-gray);
+            line-height: 1.4;
         }
 
-        .workspace-status {
+        .agent-action {
+            width: 32px;
+            height: 32px;
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            color: #00FF88;
+            justify-content: center;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 10px;
+            color: var(--heady-cyan);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
         }
 
-        .workspace-status::before {
-            content: '';
+        .agent-action:active {
+            background: rgba(0, 217, 255, 0.2);
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.3);
+        }
+
+        /* Chat Tab */
+        #chatTab {
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            display: flex;
+            gap: 8px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, var(--heady-gold), var(--heady-gold-light));
+            color: var(--heady-void);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--heady-white);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            padding: 12px 14px;
+            background: rgba(0, 217, 255, 0.2);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+            width: fit-content;
+        }
+
+        .typing-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: #00FF88;
-            box-shadow: 0 0 8px #00FF88;
+            background: var(--heady-cyan);
+            animation: typingBounce 1.4s infinite;
         }
 
-        /* Bottom Navigation */
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes typingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+            30% { transform: translateY(-8px); opacity: 1; }
+        }
+
+        .chat-suggestions {
+            padding: 12px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .suggestion-chip {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 16px;
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--heady-gold);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .suggestion-chip:active {
+            background: rgba(212, 175, 55, 0.2);
+            box-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(10, 10, 26, 0.8);
+            backdrop-filter: blur(20px);
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: var(--heady-white);
+            font-size: 14px;
+            font-family: inherit;
+            transition: all 0.3s ease;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: rgba(0, 217, 255, 0.3);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 10px rgba(0, 217, 255, 0.2);
+        }
+
+        .chat-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .send-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--heady-gold), var(--heady-cyan));
+            border: none;
+            border-radius: 10px;
+            color: var(--heady-void);
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:active {
+            transform: scale(0.92);
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        }
+
+        /* System Tab */
+        #systemTab {
+            padding: 16px 12px;
+        }
+
+        .overview-card {
+            background: rgba(26, 26, 62, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .overview-icon {
+            font-size: 24px;
+            opacity: 0.8;
+        }
+
+        .overview-content {
+            flex: 1;
+        }
+
+        .overview-label {
+            font-size: 11px;
+            color: var(--heady-gray);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .overview-value {
+            font-size: 13px;
+            color: var(--heady-white);
+            margin-top: 2px;
+            word-break: break-word;
+        }
+
+        .node-item {
+            background: rgba(26, 26, 62, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .node-info {
+            font-size: 12px;
+        }
+
+        .node-name {
+            font-weight: 600;
+            color: var(--heady-white);
+        }
+
+        .node-status {
+            font-size: 10px;
+            color: var(--heady-gray);
+            margin-top: 2px;
+        }
+
+        .node-badge {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #00FF00;
+            box-shadow: 0 0 6px rgba(0, 255, 0, 0.6);
+        }
+
+        /* More Tab */
+        #moreTab {
+            padding: 16px 12px;
+        }
+
+        .link-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .link-item {
+            background: rgba(26, 26, 62, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-decoration: none;
+            color: var(--heady-white);
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .link-item:active {
+            background: rgba(26, 26, 62, 0.9);
+            border-color: rgba(0, 217, 255, 0.3);
+            transform: translateX(4px);
+        }
+
+        .link-icon {
+            font-size: 18px;
+        }
+
+        .narrative {
+            background: rgba(26, 26, 62, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            border-radius: 14px;
+            padding: 14px;
+            margin-top: 16px;
+            font-size: 12px;
+            color: var(--heady-gray);
+            line-height: 1.6;
+        }
+
+        /* Bottom Navigation - Fixed 56px */
         .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-end;
+            height: 56px;
+            background: rgba(10, 10, 26, 0.95);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(212, 175, 55, 0.1);
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 80px;
-            background: rgba(10, 10, 26, 0.95);
-            backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 0 20px;
-            padding-bottom: 20px;
+            z-index: 99;
+            padding-bottom: 8px;
         }
 
-        .nav-item {
+        .nav-tab {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 4px;
-            color: var(--heady-gray);
-            font-size: 11px;
-            transition: all 0.3s;
+            justify-content: center;
+            gap: 3px;
+            cursor: pointer;
+            padding: 6px 0;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            user-select: none;
         }
 
-        .nav-item.active {
-            color: var(--heady-gold);
-        }
-
-        .nav-item.active .nav-icon {
-            background: rgba(212, 175, 55, 0.2);
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+        .nav-tab.active {
+            color: var(--heady-cyan);
         }
 
         .nav-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            transition: all 0.3s;
+            font-size: 24px;
         }
 
-        /* Voice Overlay */
-        .voice-overlay {
+        .nav-label {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        /* Floating Heady Orb */
+        .floating-orb {
             position: fixed;
-            inset: 0;
-            background: rgba(10, 10, 26, 0.98);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            z-index: 10000;
-            gap: 30px;
-        }
-
-        .voice-overlay.active {
-            display: flex;
-        }
-
-        .voice-circle {
-            width: 150px;
-            height: 150px;
+            bottom: 70px;
+            right: 16px;
+            width: 56px;
+            height: 56px;
             border-radius: 50%;
             background: conic-gradient(from 0deg, var(--heady-cyan), var(--heady-magenta), var(--heady-gold), var(--heady-cyan));
-            animation: voice-spin 2s linear infinite, voice-breathe 1s ease-in-out infinite;
-            position: relative;
-        }
-
-        .voice-circle::before {
-            content: '';
-            position: absolute;
-            inset: 15px;
-            border-radius: 50%;
-            background: var(--heady-void);
-        }
-
-        .voice-circle::after {
-            content: '🎙️';
-            position: absolute;
-            inset: 0;
+            box-shadow: 0 0 30px rgba(0, 217, 255, 0.4), inset 0 0 20px rgba(255,255,255,0.1);
+            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 50px;
+            animation: float-gentle 4s ease-in-out infinite;
+            z-index: 50;
+            transition: all 0.3s ease;
         }
 
-        @keyframes voice-spin {
+        .floating-orb::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: var(--heady-void);
+            inset: 4px;
+        }
+
+        .floating-orb::after {
+            content: '⚙';
+            position: absolute;
+            font-size: 28px;
+            color: var(--heady-cyan);
+            z-index: 1;
+            animation: spin-icon 3s linear infinite;
+        }
+
+        @keyframes float-gentle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes spin-icon {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
 
-        @keyframes voice-breathe {
-            0%, 100% { transform: scale(1) rotate(0deg); }
-            50% { transform: scale(1.1) rotate(180deg); }
+        .floating-orb:active {
+            transform: scale(0.92);
         }
 
-        .voice-label {
-            font-size: 20px;
-            color: var(--heady-gray);
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
 
-        .voice-hint {
-            font-size: 14px;
-            color: var(--heady-gold);
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
 
-        /* Typing Animation */
-        .typing-bubbles {
-            display: none;
-            align-self: flex-start;
-            padding: 14px 18px;
-            background: rgba(26, 26, 62, 0.8);
-            border: 1px solid rgba(212, 175, 55, 0.25);
-            border-radius: 20px;
-            border-bottom-left-radius: 6px;
+        ::-webkit-scrollbar-thumb {
+            background: rgba(212, 175, 55, 0.3);
+            border-radius: 3px;
         }
 
-        .typing-bubbles.active {
-            display: flex;
-            gap: 4px;
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(212, 175, 55, 0.5);
         }
 
-        .typing-bubble {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--heady-gold);
-            animation: typing-jump 0.6s ease-in-out infinite;
-        }
+        /* Responsive adjustments */
+        @media (max-height: 600px) {
+            .status-bar {
+                height: 40px;
+            }
 
-        .typing-bubble:nth-child(2) { animation-delay: 0.15s; }
-        .typing-bubble:nth-child(3) { animation-delay: 0.3s; }
+            .bottom-nav {
+                height: 52px;
+            }
 
-        @keyframes typing-jump {
-            0%, 60%, 100% { transform: translateY(0); }
-            30% { transform: translateY(-10px); }
+            .greeting {
+                margin-bottom: 12px;
+            }
+
+            .greeting-time {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="mobile-sacred-bg"></div>
-
     <!-- Status Bar -->
     <div class="status-bar">
-        <div class="status-time" id="clock">9:41</div>
-        <div class="status-icons">
-            <span>📶</span>
-            <span>📡</span>
-            <span>🔋</span>
+        <div class="status-left">
+            <div class="status-logo">⬡ HeadyOS</div>
+        </div>
+        <div class="status-center">
+            <div class="time-display" id="timeDisplay">12:34</div>
+            <div class="connection-dot" id="connectionDot"></div>
+        </div>
+        <div class="status-right">
+            <a href="/" class="back-home-btn" title="Home">↖</a>
         </div>
     </div>
 
-    <!-- Workspaces View -->
-    <div class="workspaces-view" id="workspacesView">
-        <div class="workspace-card active" onclick="openWorkspace('personal')">
-            <div class="workspace-icon">🏠</div>
-            <div class="workspace-info">
-                <h3>Personal</h3>
-                <p>Your private space</p>
+    <!-- Main Content -->
+    <div class="content-container">
+        <!-- Home Tab -->
+        <div id="homeTab" class="tab-content active">
+            <div class="greeting">
+                <div class="greeting-time" id="greetingTime">Good Morning, E</div>
+                <div class="greeting-subtext">Welcome back to HeadyOS</div>
             </div>
-            <div class="workspace-status">Active</div>
+
+            <div class="health-card">
+                <div class="health-status-icon">🟢</div>
+                <div class="health-status-text">
+                    <div class="health-status-title">System Status</div>
+                    <div class="health-status-value" id="healthStatus">Operational</div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <div class="quick-action-pill" data-action="pipeline">
+                    <span>▶</span>
+                    <span>Run Pipeline</span>
+                </div>
+                <div class="quick-action-pill" data-action="health">
+                    <span>❤</span>
+                    <span>Check Health</span>
+                </div>
+                <div class="quick-action-pill" data-action="status">
+                    <span>⚙</span>
+                    <span>System Status</span>
+                </div>
+                <div class="quick-action-pill" data-action="diagnose">
+                    <span>🔍</span>
+                    <span>Diagnose</span>
+                </div>
+            </div>
+
+            <div class="workspace-section">
+                <div class="section-title">Workspaces</div>
+                <div class="workspace-scroll">
+                    <div class="workspace-card">
+                        <div class="workspace-icon">👤</div>
+                        <div class="workspace-name">Personal</div>
+                        <div class="workspace-status">Active</div>
+                        <div class="status-badge"></div>
+                    </div>
+                    <div class="workspace-card">
+                        <div class="workspace-icon">🏢</div>
+                        <div class="workspace-name">HeadySystems</div>
+                        <div class="workspace-status">Connected</div>
+                        <div class="status-badge"></div>
+                    </div>
+                    <div class="workspace-card">
+                        <div class="workspace-icon">🌐</div>
+                        <div class="workspace-name">HeadyConnection</div>
+                        <div class="workspace-status">Online</div>
+                        <div class="status-badge"></div>
+                    </div>
+                    <div class="workspace-card">
+                        <div class="workspace-icon">🧪</div>
+                        <div class="workspace-name">Sandbox</div>
+                        <div class="workspace-status">Isolated</div>
+                        <div class="status-badge" style="background: #FFA500; box-shadow: 0 0 6px rgba(255, 165, 0, 0.6);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="resource-meters">
+                <div class="resource-meter">
+                    <div class="meter-label">
+                        <div class="meter-name">CPU</div>
+                        <div class="meter-value" id="cpuValue">42%</div>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="cpuFill" style="width: 42%"></div>
+                    </div>
+                </div>
+                <div class="resource-meter">
+                    <div class="meter-label">
+                        <div class="meter-name">Memory</div>
+                        <div class="meter-value" id="memValue">58%</div>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="memFill" style="width: 58%"></div>
+                    </div>
+                </div>
+                <div class="resource-meter">
+                    <div class="meter-label">
+                        <div class="meter-name">Disk</div>
+                        <div class="meter-value" id="diskValue">71%</div>
+                    </div>
+                    <div class="meter-bar">
+                        <div class="meter-fill" id="diskFill" style="width: 71%"></div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="workspace-card" onclick="openWorkspace('headysystems')">
-            <div class="workspace-icon">💼</div>
-            <div class="workspace-info">
-                <h3>HeadySystems</h3>
-                <p>C-Corp workspace</p>
+
+        <!-- Agents Tab -->
+        <div id="agentsTab" class="tab-content">
+            <div class="agent-list">
+                <div class="agent-card" data-agent="researcher">
+                    <div class="agent-avatar">📊</div>
+                    <div class="agent-info">
+                        <div class="agent-name">Researcher</div>
+                        <div class="agent-desc">Data analysis & insights</div>
+                    </div>
+                    <div class="agent-action">→</div>
+                </div>
+
+                <div class="agent-card" data-agent="codeassistant">
+                    <div class="agent-avatar">💻</div>
+                    <div class="agent-info">
+                        <div class="agent-name">Code Assistant</div>
+                        <div class="agent-desc">Development & debugging</div>
+                    </div>
+                    <div class="agent-action">→</div>
+                </div>
+
+                <div class="agent-card" data-agent="grant">
+                    <div class="agent-avatar">📝</div>
+                    <div class="agent-info">
+                        <div class="agent-name">Grant Writer</div>
+                        <div class="agent-desc">Funding & proposals</div>
+                    </div>
+                    <div class="agent-action">→</div>
+                </div>
+
+                <div class="agent-card" data-agent="creative">
+                    <div class="agent-avatar">🎨</div>
+                    <div class="agent-info">
+                        <div class="agent-name">Creative Director</div>
+                        <div class="agent-desc">Design & storytelling</div>
+                    </div>
+                    <div class="agent-action">→</div>
+                </div>
             </div>
-            <div class="workspace-status">Online</div>
         </div>
-        <div class="workspace-card" onclick="openWorkspace('connection')">
-            <div class="workspace-icon">🌐</div>
-            <div class="workspace-info">
-                <h3>Connection</h3>
-                <p>501(c)(3) workspace</p>
+
+        <!-- Chat Tab -->
+        <div id="chatTab" class="tab-content">
+            <div class="chat-messages" id="chatMessages"></div>
+            <div id="suggestionsArea" class="chat-suggestions"></div>
+            <div class="chat-input-area">
+                <input
+                    type="text"
+                    class="chat-input"
+                    id="chatInput"
+                    placeholder="Ask me anything..."
+                    autocomplete="off"
+                >
+                <button class="send-btn" id="sendBtn">→</button>
             </div>
-            <div class="workspace-status">Online</div>
         </div>
-        <div class="workspace-card" onclick="openWorkspace('sandbox')">
-            <div class="workspace-icon">🏖️</div>
-            <div class="workspace-info">
-                <h3>Sandbox</h3>
-                <p>Experiment freely</p>
+
+        <!-- System Tab -->
+        <div id="systemTab" class="tab-content">
+            <div class="overview-card">
+                <div class="overview-icon">🔋</div>
+                <div class="overview-content">
+                    <div class="overview-label">Pipeline Status</div>
+                    <div class="overview-value" id="pipelineStatus">Idle</div>
+                </div>
             </div>
-            <div class="workspace-status">Idle</div>
+
+            <div class="overview-card">
+                <div class="overview-icon">📊</div>
+                <div class="overview-content">
+                    <div class="overview-label">Active Layer</div>
+                    <div class="overview-value" id="layerInfo">L2 - Core Operations</div>
+                </div>
+            </div>
+
+            <div id="nodesList" style="margin-top: 12px;"></div>
+        </div>
+
+        <!-- More Tab -->
+        <div id="moreTab" class="tab-content">
+            <div class="link-list">
+                <a href="/mcp-dashboard.html" class="link-item">
+                    <span>🔌 MCP Dashboard</span>
+                    <span class="link-icon">→</span>
+                </a>
+                <a href="/docker-orchestrator.html" class="link-item">
+                    <span>🐳 Docker Orchestrator</span>
+                    <span class="link-icon">→</span>
+                </a>
+                <a href="/api-docs" class="link-item">
+                    <span>📖 API Documentation</span>
+                    <span class="link-icon">→</span>
+                </a>
+                <a href="/api/health" class="link-item">
+                    <span>🩺 System Health Check</span>
+                    <span class="link-icon">→</span>
+                </a>
+            </div>
+
+            <div class="narrative" id="systemNarrative">
+                Loading system narrative...
+            </div>
         </div>
     </div>
 
     <!-- Floating Orb -->
-    <div class="mobile-orb-container" onclick="toggleOrbMenu()">
-        <div class="mobile-orb" id="mainOrb"></div>
-    </div>
-
-    <!-- Agent Panel -->
-    <div class="agent-grid" id="agentGrid">
-        <div class="agent-mini active" onclick="selectAgent('researcher')">
-            <div class="agent-icon">🔬</div>
-            <span>Researcher</span>
-        </div>
-        <div class="agent-mini" onclick="selectAgent('coder')">
-            <div class="agent-icon">💻</div>
-            <span>Coder</span>
-        </div>
-        <div class="agent-mini" onclick="selectAgent('writer')">
-            <div class="agent-icon">📝</div>
-            <span>Writer</span>
-        </div>
-        <div class="agent-mini" onclick="selectAgent('creative')">
-            <div class="agent-icon">🎨</div>
-            <span>Creative</span>
-        </div>
-    </div>
-
-    <!-- Chat Sheet -->
-    <div class="chat-sheet" id="chatSheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-header">
-            <div class="sheet-title">
-                <div class="orb-small">✦</div>
-                <span>Heady Assistant</span>
-            </div>
-            <div class="sheet-actions">
-                <button class="sheet-btn" onclick="startVoice()">🎤</button>
-                <button class="sheet-btn" onclick="closeChat()">✕</button>
-            </div>
-        </div>
-
-        <div class="quick-row">
-            <div class="quick-pill">📄 Summarize</div>
-            <div class="quick-pill">💡 Explain</div>
-            <div class="quick-pill">🔍 Search</div>
-            <div class="quick-pill">⚡ Action</div>
-        </div>
-
-        <div class="messages-container" id="messages">
-            <div class="msg-bubble assistant">
-                Welcome to HeadyOS Mobile. I'm your sacred AI companion. How can I assist your journey?
-            </div>
-        </div>
-
-        <div class="typing-bubbles" id="typingIndicator">
-            <div class="typing-bubble"></div>
-            <div class="typing-bubble"></div>
-            <div class="typing-bubble"></div>
-        </div>
-
-        <div class="input-area">
-            <div class="input-wrapper">
-                <input type="text" class="text-input" id="textInput" placeholder="Ask anything...">
-                <button class="input-icon" onclick="startVoice()">🎤</button>
-                <button class="input-icon send" onclick="sendMessage()">➤</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Voice Overlay -->
-    <div class="voice-overlay" id="voiceOverlay" onclick="stopVoice()">
-        <div class="voice-circle"></div>
-        <div class="voice-label">Listening...</div>
-        <div class="voice-hint">Tap anywhere to stop</div>
-    </div>
+    <div class="floating-orb" id="floatingOrb" title="Quick Actions"></div>
 
     <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('workspaces')">
-            <div class="nav-icon">◈</div>
-            <span>Spaces</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('agents')">
-            <div class="nav-icon">✦</div>
-            <span>Agents</span>
-        </div>
-        <div class="nav-item" onclick="openChat()">
+    <div class="bottom-nav">
+        <a href="#" class="nav-tab active" data-tab="home">
+            <div class="nav-icon">🏠</div>
+            <div class="nav-label">Home</div>
+        </a>
+        <a href="#" class="nav-tab" data-tab="agents">
+            <div class="nav-icon">🤖</div>
+            <div class="nav-label">Agents</div>
+        </a>
+        <a href="#" class="nav-tab" data-tab="chat">
             <div class="nav-icon">💬</div>
-            <span>Chat</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('automations')">
-            <div class="nav-icon">⚡</div>
-            <span>Auto</span>
-        </div>
-        <div class="nav-item" onclick="switchTab('settings')">
-            <div class="nav-icon">◉</div>
-            <span>More</span>
-        </div>
-    </nav>
+            <div class="nav-label">Chat</div>
+        </a>
+        <a href="#" class="nav-tab" data-tab="system">
+            <div class="nav-icon">⚙</div>
+            <div class="nav-label">System</div>
+        </a>
+        <a href="#" class="nav-tab" data-tab="more">
+            <div class="nav-icon">•••</div>
+            <div class="nav-label">More</div>
+        </a>
+    </div>
 
     <script>
-        // ─── Cloud Runtime Auto-Detect ─────────────────────────────────
-        const HEADY_CLOUD_URLS = [
-            window.location.origin + '/api',
-            'https://heady-manager-headyme.headysystems.com/api',
-            'https://heady-manager-headysystems.headysystems.com/api',
-            'https://heady-manager-headyconnection.headysystems.com/api',
-        ];
-        let HEADY_API = HEADY_CLOUD_URLS[0];
-        let _apiResolved = false;
+        /* ═══════════════════════════════════════════════════════════════════════════
+           HeadyOS Mobile - Touch-Optimized Native App Experience
+           ═══════════════════════════════════════════════════════════════════════════ */
 
-        async function resolveApi() {
-            if (_apiResolved) return HEADY_API;
-            for (const url of HEADY_CLOUD_URLS) {
-                try {
-                    const r = await fetch(url + '/health', { signal: AbortSignal.timeout(3000) });
-                    if (r.ok) { HEADY_API = url; _apiResolved = true; return url; }
-                } catch(e) { /* try next */ }
+        const API_BASE = resolveApi();
+        const ENDPOINTS = {
+            health: `${API_BASE}/api/health`,
+            buddy: {
+                chat: `${API_BASE}/api/buddy/chat`,
+                suggestions: `${API_BASE}/api/buddy/suggestions`,
+                orchestrator: `${API_BASE}/api/buddy/orchestrator`,
+            },
+            system: {
+                status: `${API_BASE}/api/system/status`,
+                stories: `${API_BASE}/api/stories/summary`,
+            },
+            resources: `${API_BASE}/api/resources/health`,
+            pipeline: `${API_BASE}/api/pipeline/state`,
+            nodes: `${API_BASE}/api/nodes`,
+            layer: `${API_BASE}/api/layer`,
+        };
+
+        // State
+        const state = {
+            messages: [],
+            isLoading: false,
+            currentTab: 'home',
+            isOnline: false,
+            selectedAgent: null,
+        };
+
+        // Utility: Resolve API base
+        function resolveApi() {
+            if (typeof window !== 'undefined') {
+                const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                const protocol = window.location.protocol;
+                const host = window.location.hostname;
+                const port = isDev ? 3300 : (window.location.port ? `:${window.location.port}` : '');
+                return `${protocol}//${host}${port}`;
             }
-            return HEADY_API;
+            return 'http://localhost:3300';
         }
 
-        // Clock
-        function updateClock() {
+        // Update time display
+        function updateTime() {
             const now = new Date();
-            document.getElementById('clock').textContent = 
-                now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: false });
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+            const hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
 
-        // Orb Menu Toggle
-        let orbMenuOpen = false;
-        function toggleOrbMenu() {
-            orbMenuOpen = !orbMenuOpen;
-            document.getElementById('agentGrid').classList.toggle('visible', orbMenuOpen);
-            document.getElementById('mainOrb').classList.toggle('pulse', orbMenuOpen);
-        }
+            document.getElementById('timeDisplay').textContent =
+                `${displayHours}:${minutes}`;
 
-        // Select Agent
-        function selectAgent(agent) {
-            document.querySelectorAll('.agent-mini').forEach(el => el.classList.remove('active'));
-            event.currentTarget.classList.add('active');
-            orbMenuOpen = false;
-            document.getElementById('agentGrid').classList.remove('visible');
-            openChat();
+            // Update greeting
+            let greeting = '';
+            if (hours < 12) greeting = 'Good Morning';
+            else if (hours < 17) greeting = 'Good Afternoon';
+            else greeting = 'Good Evening';
+
+            document.getElementById('greetingTime').textContent = `${greeting}, E`;
         }
 
-        // Open/Close Chat
-        function openChat() {
-            document.getElementById('chatSheet').classList.add('open');
-        }
-
-        function closeChat() {
-            document.getElementById('chatSheet').classList.remove('open');
-        }
-
-        // Send Message - connected to cloud runtime
-        async function sendMessage() {
-            const input = document.getElementById('textInput');
-            const text = input.value.trim();
-            if (!text) return;
-
-            addMessage(text, 'user');
-            input.value = '';
-
-            document.getElementById('typingIndicator').classList.add('active');
-
-            await resolveApi();
-
-            try {
-                const response = await fetch(`${HEADY_API}/buddy/chat`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text, history: [] })
-                });
-                const data = await response.json();
-                document.getElementById('typingIndicator').classList.remove('active');
-                addMessage(data.reply || data.message || "I'm here to help!", 'assistant');
-            } catch(error) {
-                document.getElementById('typingIndicator').classList.remove('active');
-                addMessage(`Connection issue: ${error.message}`, 'assistant');
-            }
-        }
-
-        function addMessage(text, type) {
-            const msg = document.createElement('div');
-            msg.className = `msg-bubble ${type}`;
-            msg.textContent = text;
-            document.getElementById('messages').appendChild(msg);
-            document.getElementById('messages').scrollTop = 999999;
-        }
-
-        // Voice
-        function startVoice() {
-            document.getElementById('voiceOverlay').classList.add('active');
-        }
-
-        function stopVoice() {
-            document.getElementById('voiceOverlay').classList.remove('active');
-        }
-
-        // Quick pills - connected to cloud runtime
-        document.querySelectorAll('.quick-pill').forEach(pill => {
-            pill.addEventListener('click', async () => {
-                const text = pill.textContent;
-                addMessage(text, 'user');
-                document.getElementById('typingIndicator').classList.add('active');
-                await resolveApi();
-                try {
-                    const r = await fetch(`${HEADY_API}/buddy/chat`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: text, history: [] })
-                    });
-                    const data = await r.json();
-                    document.getElementById('typingIndicator').classList.remove('active');
-                    addMessage(data.reply || data.message || "Done!", 'assistant');
-                } catch(e) {
-                    document.getElementById('typingIndicator').classList.remove('active');
-                    addMessage(`Connection issue: ${e.message}`, 'assistant');
-                }
+        // Tab navigation
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                e.preventDefault();
+                const tabName = tab.dataset.tab;
+                switchTab(tabName);
             });
         });
 
-        // Enter to send
-        document.getElementById('textInput').addEventListener('keypress', (e) => {
+        function switchTab(tabName) {
+            state.currentTab = tabName;
+
+            // Update nav tabs
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+                if (tab.dataset.tab === tabName) tab.classList.add('active');
+            });
+
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+
+            // Load tab-specific data
+            if (tabName === 'chat' && state.messages.length === 0) {
+                loadChatSuggestions();
+            } else if (tabName === 'system') {
+                loadSystemData();
+            } else if (tabName === 'more') {
+                loadSystemNarrative();
+            }
+        }
+
+        // Load chat suggestions
+        async function loadChatSuggestions() {
+            try {
+                const response = await fetch(ENDPOINTS.buddy.suggestions);
+                if (response.ok) {
+                    const data = await response.json();
+                    const suggestionsArea = document.getElementById('suggestionsArea');
+                    suggestionsArea.innerHTML = '';
+
+                    if (data.suggestions && Array.isArray(data.suggestions)) {
+                        data.suggestions.slice(0, 4).forEach(suggestion => {
+                            const chip = document.createElement('div');
+                            chip.className = 'suggestion-chip';
+                            chip.textContent = suggestion;
+                            chip.addEventListener('click', () => {
+                                document.getElementById('chatInput').value = suggestion;
+                                sendMessage();
+                            });
+                            suggestionsArea.appendChild(chip);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading suggestions:', error);
+            }
+        }
+
+        // Chat functionality
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') sendMessage();
         });
 
-        // Swipe down to close chat
-        let touchStartY = 0;
-        const sheet = document.getElementById('chatSheet');
-        
-        sheet.addEventListener('touchstart', (e) => {
-            touchStartY = e.touches[0].clientY;
-        });
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
 
-        sheet.addEventListener('touchmove', (e) => {
-            const touchY = e.touches[0].clientY;
-            const diff = touchY - touchStartY;
-            if (diff > 100 && sheet.classList.contains('open')) {
-                closeChat();
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+
+            if (!message) return;
+
+            input.value = '';
+            addMessage(message, 'user');
+
+            state.isLoading = true;
+            showTypingIndicator();
+
+            try {
+                const response = await fetch(ENDPOINTS.buddy.chat, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        history: state.messages.slice(0, -1),
+                    }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    removeTypingIndicator();
+                    addMessage(data.response || 'No response', 'assistant');
+                }
+            } catch (error) {
+                removeTypingIndicator();
+                addMessage('Error: Could not reach assistant', 'assistant');
+            } finally {
+                state.isLoading = false;
             }
+        }
+
+        function addMessage(text, role) {
+            state.messages.push({ text, role });
+            const messagesArea = document.getElementById('chatMessages');
+            const message = document.createElement('div');
+            message.className = `message ${role}`;
+            message.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+            messagesArea.appendChild(message);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        function showTypingIndicator() {
+            const messagesArea = document.getElementById('chatMessages');
+            const indicator = document.createElement('div');
+            indicator.className = 'message assistant';
+            indicator.id = 'typingIndicator';
+            indicator.innerHTML = `
+                <div class="typing-indicator">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            `;
+            messagesArea.appendChild(indicator);
+            messagesArea.scrollTop = messagesArea.scrollHeight;
+        }
+
+        function removeTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) indicator.remove();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Quick action pills
+        document.querySelectorAll('.quick-action-pill').forEach(pill => {
+            pill.addEventListener('click', async () => {
+                const action = pill.dataset.action;
+                switchTab('chat');
+
+                const messages = {
+                    pipeline: 'Run the pipeline for me',
+                    health: 'Check system health',
+                    status: 'Show me system status',
+                    diagnose: 'Diagnose any issues',
+                };
+
+                document.getElementById('chatInput').value = messages[action];
+                await new Promise(r => setTimeout(r, 100));
+                sendMessage();
+            });
         });
 
-        // Workspace switch
-        function openWorkspace(space) {
-            document.querySelectorAll('.workspace-card').forEach(c => c.classList.remove('active'));
-            event.currentTarget.classList.add('active');
+        // Agent cards
+        document.querySelectorAll('.agent-card').forEach(card => {
+            card.addEventListener('click', () => {
+                state.selectedAgent = card.dataset.agent;
+                switchTab('chat');
+
+                const agentMessages = {
+                    researcher: 'Hello Researcher, I need data analysis',
+                    codeassistant: 'Hello Code Assistant, help me with development',
+                    grant: 'Hello Grant Writer, help me write a proposal',
+                    creative: 'Hello Creative Director, inspire me',
+                };
+
+                document.getElementById('chatInput').value = agentMessages[state.selectedAgent];
+                sendMessage();
+            });
+        });
+
+        // Floating orb quick actions
+        document.getElementById('floatingOrb').addEventListener('click', async () => {
+            switchTab('chat');
+            document.getElementById('chatInput').value = 'Run diagnostic report';
+            await new Promise(r => setTimeout(r, 100));
+            sendMessage();
+        });
+
+        // System data loading
+        async function loadSystemData() {
+            try {
+                const [statusRes, nodesRes, pipelineRes, layerRes] = await Promise.all([
+                    fetch(ENDPOINTS.system.status),
+                    fetch(ENDPOINTS.nodes),
+                    fetch(ENDPOINTS.pipeline),
+                    fetch(ENDPOINTS.layer),
+                ]);
+
+                if (statusRes.ok) {
+                    const status = await statusRes.json();
+                    document.getElementById('pipelineStatus').textContent =
+                        status.status || 'Unknown';
+                }
+
+                if (nodesRes.ok) {
+                    const nodes = await nodesRes.json();
+                    const nodesList = document.getElementById('nodesList');
+                    nodesList.innerHTML = '';
+
+                    if (Array.isArray(nodes)) {
+                        nodes.forEach(node => {
+                            const item = document.createElement('div');
+                            item.className = 'node-item';
+                            item.innerHTML = `
+                                <div class="node-info">
+                                    <div class="node-name">${node.name || 'Node'}</div>
+                                    <div class="node-status">${node.status || 'unknown'}</div>
+                                </div>
+                                <div class="node-badge" style="background: ${
+                                    node.status === 'healthy' ? '#00FF00' : '#FFA500'
+                                }; box-shadow: 0 0 6px ${
+                                    node.status === 'healthy' ? 'rgba(0,255,0,0.6)' : 'rgba(255,165,0,0.6)'
+                                };"></div>
+                            `;
+                            nodesList.appendChild(item);
+                        });
+                    }
+                }
+
+                if (layerRes.ok) {
+                    const layer = await layerRes.json();
+                    document.getElementById('layerInfo').textContent =
+                        layer.name || 'L2 - Core Operations';
+                }
+            } catch (error) {
+                console.error('Error loading system data:', error);
+            }
+        }
+
+        // Load system narrative
+        async function loadSystemNarrative() {
+            try {
+                const response = await fetch(ENDPOINTS.system.stories);
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('systemNarrative').textContent =
+                        data.summary || 'System operating normally.';
+                }
+            } catch (error) {
+                console.error('Error loading narrative:', error);
+            }
+        }
+
+        // Load initial data
+        async function initializeApp() {
+            updateTime();
+            setInterval(updateTime, 60000);
+
+            try {
+                // Health check
+                const healthRes = await fetch(ENDPOINTS.health);
+                if (healthRes.ok) {
+                    const health = await healthRes.json();
+                    state.isOnline = true;
+                    document.getElementById('connectionDot').classList.remove('offline');
+                    document.getElementById('healthStatus').textContent =
+                        health.status || 'Operational';
+                }
+
+                // Resources
+                const resourcesRes = await fetch(ENDPOINTS.resources);
+                if (resourcesRes.ok) {
+                    const resources = await resourcesRes.json();
+
+                    const cpu = Math.round(resources.cpu || 42);
+                    const mem = Math.round(resources.memory || 58);
+                    const disk = Math.round(resources.disk || 71);
+
+                    document.getElementById('cpuValue').textContent = `${cpu}%`;
+                    document.getElementById('cpuFill').style.width = `${cpu}%`;
+
+                    document.getElementById('memValue').textContent = `${mem}%`;
+                    document.getElementById('memFill').style.width = `${mem}%`;
+
+                    document.getElementById('diskValue').textContent = `${disk}%`;
+                    document.getElementById('diskFill').style.width = `${disk}%`;
+                }
+            } catch (error) {
+                console.error('Initialization error:', error);
+                state.isOnline = false;
+                document.getElementById('connectionDot').classList.add('offline');
+            }
+
+            // Auto-refresh every 30s
+            setInterval(async () => {
+                if (state.currentTab === 'home') {
+                    try {
+                        const resourcesRes = await fetch(ENDPOINTS.resources);
+                        if (resourcesRes.ok) {
+                            const resources = await resourcesRes.json();
+
+                            const cpu = Math.round(resources.cpu || 42);
+                            const mem = Math.round(resources.memory || 58);
+                            const disk = Math.round(resources.disk || 71);
+
+                            document.getElementById('cpuValue').textContent = `${cpu}%`;
+                            document.getElementById('cpuFill').style.width = `${cpu}%`;
+
+                            document.getElementById('memValue').textContent = `${mem}%`;
+                            document.getElementById('memFill').style.width = `${mem}%`;
+
+                            document.getElementById('diskValue').textContent = `${disk}%`;
+                            document.getElementById('diskFill').style.width = `${disk}%`;
+                        }
+                    } catch (error) {
+                        console.error('Auto-refresh error:', error);
+                    }
+                }
+            }, 30000);
+        }
+
+        // Start app on load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Prevent pinch zoom on mobile
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) e.preventDefault();
+        }, { passive: false });
+
+        // Service worker registration
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').catch(err => {
+                console.error('ServiceWorker registration failed:', err);
+            });
         }
     </script>
 </body>

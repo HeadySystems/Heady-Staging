@@ -298,10 +298,7 @@ app.post('/api/vm/revoke', async (req, res) => {
 });
 
 // ─── Static Assets ─────────────────────────────────────────────────
-const frontendBuildPath = path.join(__dirname, "frontend", "dist");
-if (fs.existsSync(frontendBuildPath)) {
-  app.use(express.static(frontendBuildPath));
-}
+// All UI pages served from public/ (self-contained HTML + sacred-geometry.css)
 app.use(express.static("public"));
 
 // ─── Utility ────────────────────────────────────────────────────────
@@ -2131,16 +2128,14 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ─── SPA Fallback ───────────────────────────────────────────────────
-app.get("*", (req, res) => {
-  const indexPath = path.join(frontendBuildPath, "index.html");
-  if (fs.existsSync(indexPath)) return res.sendFile(indexPath);
-  res.status(404).json({ error: "Not found" });
-});
-
-// Root health endpoint
+// Root health endpoint (before SPA fallback)
 app.get("/health", (req, res) => {
   res.redirect("/api/health");
+});
+
+// ─── 404 Handler ────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ error: "Not found", path: req.path, hint: "Try /api/health or visit /" });
 });
 
 // ─── Start ──────────────────────────────────────────────────────────

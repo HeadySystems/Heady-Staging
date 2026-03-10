@@ -3,885 +3,1365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heady Docker Orchestrator - Sacred Container Deployment</title>
-    <link rel="stylesheet" href="sacred-geometry.css">
+    <title>Infrastructure Orchestrator - Heady Systems</title>
+    <link rel="stylesheet" href="/sacred-geometry.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             font-family: 'Segoe UI', system-ui, sans-serif;
             background: var(--heady-void);
             color: var(--heady-white);
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        .docker-app {
-            display: grid;
-            grid-template-rows: auto 1fr auto;
-            min-height: 100vh;
+        /* HEADER */
+        .orchestrator-header {
+            background: rgba(10, 10, 26, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        /* Sacred Header */
-        .docker-header {
-            background: rgba(10, 10, 26, 0.95);
-            border-bottom: 1px solid rgba(212, 175, 55, 0.2);
-            padding: 20px 32px;
+        .header-left {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .back-button {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-button);
+            background: rgba(212, 175, 55, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--heady-gold);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: rgba(212, 175, 55, 0.3);
+            box-shadow: var(--glow-gold);
+        }
+
+        .header-title {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-title h1 {
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--heady-gold), var(--heady-cyan));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header-title p {
+            font-size: 12px;
+            color: var(--heady-gray);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .layer-switcher {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            border-radius: var(--radius-button);
+            padding: 4px 8px;
+        }
+
+        .layer-switcher label {
+            font-size: 12px;
+            color: var(--heady-cyan);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .layer-switcher select {
+            background: rgba(10, 10, 26, 0.8);
+            border: 1px solid rgba(0, 217, 255, 0.3);
+            color: var(--heady-white);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .refresh-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: var(--radius-button);
+            background: rgba(255, 0, 160, 0.15);
+            border: 1px solid rgba(255, 0, 160, 0.3);
+            color: var(--heady-magenta);
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(255, 0, 160, 0.3);
+            box-shadow: var(--glow-magenta);
+        }
+
+        .refresh-btn.spinning {
+            animation: spin 1s linear infinite;
+        }
+
+        /* MAIN CONTENT */
+        .orchestrator-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* METRICS BAR */
+        .metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-gauge {
+            background: rgba(26, 26, 62, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sacred);
+            padding: 20px;
+            box-shadow: var(--shadow-sacred);
+        }
+
+        .gauge-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--heady-gray);
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .gauge-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 120px;
+            position: relative;
+        }
+
+        .gauge-svg {
+            width: 100px;
+            height: 100px;
+            filter: drop-shadow(0 0 20px rgba(0, 217, 255, 0.3));
+        }
+
+        .gauge-value {
+            position: absolute;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--heady-cyan), var(--heady-magenta));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gauge-unit {
+            font-size: 10px;
+            color: var(--heady-gray);
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        /* NODES GRID */
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--heady-white);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--heady-gold), var(--heady-cyan));
+            border-radius: 2px;
+        }
+
+        .nodes-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .node-card {
+            background: rgba(26, 26, 62, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sacred);
+            padding: 20px;
+            box-shadow: var(--shadow-sacred);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
 
-        .docker-header::before {
+        .node-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-floating);
+            border-color: rgba(212, 175, 55, 0.3);
+        }
+
+        .node-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--heady-cyan), var(--heady-magenta), var(--heady-gold), var(--heady-cyan));
-            animation: shimmer 4s ease-in-out infinite;
+            height: 2px;
+            background: linear-gradient(90deg, var(--heady-gold), var(--heady-cyan), var(--heady-magenta));
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
 
-        @keyframes shimmer {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 1; }
+        .node-card:hover::before {
+            opacity: 1;
         }
 
-        .header-brand {
+        .node-header {
             display: flex;
-            align-items: center;
-            gap: 16px;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 16px;
         }
 
-        .docker-icon {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, #2496ED, #0D7BC0);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            box-shadow: 0 0 30px rgba(36, 150, 237, 0.4);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .docker-icon::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: conic-gradient(from 0deg, transparent, rgba(255,255,255,0.3), transparent);
-            animation: rotate 3s linear infinite;
-        }
-
-        .docker-icon::after {
-            content: '🐳';
-            position: relative;
-            z-index: 1;
-        }
-
-        .brand-text h1 {
-            font-size: 24px;
+        .node-name {
+            font-size: 16px;
             font-weight: 600;
-            background: linear-gradient(135deg, #2496ED, var(--heady-cyan));
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .brand-text p {
-            font-size: 13px;
-            color: var(--heady-gray);
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 12px;
-        }
-
-        .header-btn {
-            padding: 10px 20px;
-            border-radius: 10px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            border: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .header-btn.primary {
-            background: linear-gradient(135deg, #2496ED, var(--heady-cyan));
-            color: white;
-        }
-
-        .header-btn.primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(36, 150, 237, 0.3);
-        }
-
-        .header-btn.secondary {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.15);
             color: var(--heady-white);
         }
 
-        /* Main Dashboard */
-        .docker-dashboard {
-            padding: 32px;
-            display: grid;
-            grid-template-columns: 300px 1fr 320px;
-            gap: 24px;
-            background: 
-                radial-gradient(ellipse at 10% 20%, rgba(36, 150, 237, 0.08) 0%, transparent 50%),
-                radial-gradient(ellipse at 90% 80%, rgba(0, 217, 255, 0.05) 0%, transparent 50%),
-                var(--heady-void);
-        }
-
-        /* Profile Selector */
-        .profile-panel {
-            background: rgba(26, 26, 62, 0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+        .node-status-badge {
+            padding: 4px 12px;
             border-radius: 20px;
-            padding: 24px;
-        }
-
-        .panel-title {
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--heady-gold);
-            margin-bottom: 20px;
+            letter-spacing: 0.5px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
-        .profile-card {
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            margin-bottom: 12px;
-            cursor: pointer;
-            transition: all 0.3s;
-            position: relative;
+        .status-active {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.4);
         }
 
-        .profile-card:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.15);
-            transform: translateX(4px);
-        }
-
-        .profile-card.active {
-            background: rgba(36, 150, 237, 0.15);
-            border-color: #2496ED;
-        }
-
-        .profile-card.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 3px;
-            height: 30px;
-            background: linear-gradient(to bottom, var(--heady-cyan), #2496ED);
-            border-radius: 0 3px 3px 0;
-        }
-
-        .profile-header {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-        }
-
-        .profile-icon {
-            font-size: 20px;
-        }
-
-        .profile-name {
-            font-weight: 600;
-            font-size: 14px;
-        }
-
-        .profile-desc {
-            font-size: 12px;
-            color: var(--heady-gray);
-            line-height: 1.4;
-        }
-
-        /* Container Visualization */
-        .containers-view {
-            background: rgba(26, 26, 62, 0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 24px;
-        }
-
-        .containers-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 24px;
-        }
-
-        .containers-header h2 {
-            font-size: 18px;
-            font-weight: 600;
-        }
-
-        .status-filter {
-            display: flex;
-            gap: 8px;
-        }
-
-        .filter-btn {
-            padding: 6px 14px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            font-size: 12px;
-            color: var(--heady-gray);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .filter-btn.active, .filter-btn:hover {
-            background: rgba(0, 255, 136, 0.15);
-            border-color: rgba(0, 255, 136, 0.3);
-            color: #00FF88;
-        }
-
-        /* Container Cards */
-        .container-list {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .container-card {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            transition: all 0.3s;
-        }
-
-        .container-card:hover {
-            background: rgba(255, 255, 255, 0.03);
-            border-color: rgba(36, 150, 237, 0.3);
-            transform: translateX(4px);
-        }
-
-        .container-status {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-            position: relative;
-        }
-
-        .container-status.running {
-            background: rgba(0, 255, 136, 0.15);
-            border: 1px solid rgba(0, 255, 136, 0.3);
-        }
-
-        .container-status.running::before {
-            content: '';
-            position: absolute;
-            inset: -2px;
-            border-radius: 14px;
-            border: 2px solid #00FF88;
-            animation: pulse-ring 2s infinite;
-        }
-
-        @keyframes pulse-ring {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0; }
-        }
-
-        .container-info {
-            flex: 1;
-        }
-
-        .container-name {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 4px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .container-tag {
-            padding: 2px 8px;
-            background: rgba(36, 150, 237, 0.2);
-            border-radius: 4px;
-            font-size: 10px;
-            color: #2496ED;
-            font-weight: 500;
-        }
-
-        .container-meta {
-            font-size: 12px;
-            color: var(--heady-gray);
-            display: flex;
-            gap: 16px;
-        }
-
-        .container-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .action-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 14px;
-        }
-
-        .action-icon:hover {
-            background: rgba(36, 150, 237, 0.2);
-            border-color: #2496ED;
-        }
-
-        /* Stats Panel */
-        .stats-panel {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .stat-card {
-            background: rgba(26, 26, 62, 0.5);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 20px;
-            padding: 20px;
-        }
-
-        .stat-card h3 {
-            font-size: 13px;
-            color: var(--heady-gray);
-            margin-bottom: 16px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .stat-value {
-            font-size: 36px;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--heady-cyan), #2496ED);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .stat-bar {
-            height: 6px;
-            background: rgba(255, 255, 255, 0.08);
-            border-radius: 3px;
-            margin-top: 12px;
-            overflow: hidden;
-        }
-
-        .stat-bar-fill {
-            height: 100%;
-            background: linear-gradient(90deg, var(--heady-cyan), #2496ED);
-            border-radius: 3px;
-            transition: width 1s ease;
-        }
-
-        /* Resource Gauges */
-        .gauge-container {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .gauge-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .gauge-visual {
-            width: 60px;
-            height: 60px;
-            position: relative;
-        }
-
-        .gauge-svg {
-            width: 100%;
-            height: 100%;
-            transform: rotate(-90deg);
-        }
-
-        .gauge-bg {
-            fill: none;
-            stroke: rgba(255, 255, 255, 0.1);
-            stroke-width: 6;
-        }
-
-        .gauge-fill {
-            fill: none;
-            stroke: url(#gaugeGradient);
-            stroke-width: 6;
-            stroke-linecap: round;
-            stroke-dasharray: 157;
-            stroke-dashoffset: 40;
-            transition: stroke-dashoffset 1s ease;
-        }
-
-        .gauge-text {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .gauge-info h4 {
-            font-size: 14px;
-            font-weight: 500;
-            margin-bottom: 2px;
-        }
-
-        .gauge-info p {
-            font-size: 12px;
-            color: var(--heady-gray);
-        }
-
-        /* Footer Status Bar */
-        .docker-footer {
-            background: rgba(10, 10, 26, 0.95);
-            border-top: 1px solid rgba(212, 175, 55, 0.15);
-            padding: 12px 32px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 12px;
-        }
-
-        .footer-left {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .status-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .status-inactive {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.4);
         }
 
         .status-dot {
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            background: #00FF88;
-            box-shadow: 0 0 10px #00FF88;
+            animation: pulse 2s ease-in-out infinite;
         }
 
-        .status-label {
+        .status-dot.active { background: #4caf50; }
+        .status-dot.inactive { background: #f44336; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .node-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
             color: var(--heady-gray);
         }
 
-        .status-value {
+        .node-info-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .node-info-label {
+            color: var(--heady-gray);
+        }
+
+        .node-info-value {
             color: var(--heady-white);
             font-weight: 500;
         }
 
-        .footer-right {
+        .node-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 16px;
+        }
+
+        .action-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: var(--radius-button);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--heady-gold);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: rgba(212, 175, 55, 0.3);
+            box-shadow: var(--glow-gold);
+        }
+
+        .action-btn.danger {
+            border-color: rgba(244, 67, 54, 0.3);
+            background: rgba(244, 67, 54, 0.1);
+            color: #f44336;
+        }
+
+        .action-btn.danger:hover {
+            background: rgba(244, 67, 54, 0.3);
+            box-shadow: var(--glow-magenta);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* SYSTEM LAYERS */
+        .layers-panel {
+            background: rgba(26, 26, 62, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sacred);
+            padding: 24px;
+            box-shadow: var(--shadow-sacred);
+            margin-bottom: 24px;
+        }
+
+        .layers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .layer-button {
+            padding: 12px 16px;
+            border-radius: var(--radius-button);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--heady-white);
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
             display: flex;
             align-items: center;
-            gap: 16px;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .layer-button:hover {
+            border-color: rgba(212, 175, 55, 0.4);
+            background: rgba(212, 175, 55, 0.1);
+            box-shadow: var(--glow-gold);
+        }
+
+        .layer-button.active {
+            border-color: var(--heady-cyan);
+            background: rgba(0, 217, 255, 0.2);
+            color: var(--heady-cyan);
+            box-shadow: var(--glow-cyan);
+        }
+
+        .layer-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        /* DIAGNOSTICS */
+        .diagnostics-panel {
+            background: rgba(26, 26, 62, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sacred);
+            padding: 24px;
+            box-shadow: var(--shadow-sacred);
+            margin-bottom: 24px;
+        }
+
+        .diagnostics-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .diagnostics-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .diagnostic-block {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .diagnostic-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border-left: 3px solid rgba(212, 175, 55, 0.3);
+            font-size: 13px;
+        }
+
+        .diagnostic-item.ok {
+            border-left-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .diagnostic-item.warning {
+            border-left-color: #ff9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .diagnostic-item.critical {
+            border-left-color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .diagnostic-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* QUICK WINS */
+        .quick-wins-panel {
+            background: rgba(26, 26, 62, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sacred);
+            padding: 24px;
+            box-shadow: var(--shadow-sacred);
+            margin-bottom: 24px;
+        }
+
+        .quick-wins-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .quick-win-item {
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border-left: 3px solid var(--heady-gold);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quick-win-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .quick-win-title {
+            font-weight: 600;
+            color: var(--heady-white);
+            font-size: 14px;
+        }
+
+        .quick-win-desc {
+            font-size: 12px;
             color: var(--heady-gray);
         }
 
-        .footer-action {
-            padding: 6px 12px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
+        .quick-win-action {
+            padding: 6px 16px;
+            border-radius: 8px;
+            background: rgba(212, 175, 55, 0.2);
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            color: var(--heady-gold);
+            font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
         }
 
-        .footer-action:hover {
-            background: rgba(36, 150, 237, 0.2);
-            border-color: #2496ED;
-            color: var(--heady-cyan);
+        .quick-win-action:hover {
+            background: rgba(212, 175, 55, 0.4);
+            box-shadow: var(--glow-gold);
         }
 
-        /* Animated Background Pattern */
-        .docker-bg {
-            position: fixed;
-            inset: 0;
-            pointer-events: none;
-            z-index: -1;
-            background: 
-                radial-gradient(ellipse at 20% 50%, rgba(36, 150, 237, 0.05) 0%, transparent 50%),
-                radial-gradient(ellipse at 80% 80%, rgba(0, 217, 255, 0.03) 0%, transparent 50%);
+        /* TIMELINE */
+        .timeline-panel {
+            background: rgba(26, 26, 62, 0.6);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-sacred);
+            padding: 24px;
+            box-shadow: var(--shadow-sacred);
+            margin-bottom: 24px;
         }
 
-        .docker-bg::before {
+        .timeline-items {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .timeline-item {
+            display: flex;
+            gap: 12px;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .timeline-item::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background-image: 
-                linear-gradient(rgba(36, 150, 237, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(36, 150, 237, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            opacity: 0.5;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(180deg, var(--heady-cyan), var(--heady-magenta));
+        }
+
+        .timeline-item::after {
+            content: '';
+            position: absolute;
+            left: -6px;
+            top: 4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--heady-cyan);
+        }
+
+        .timeline-content {
+            flex: 1;
+        }
+
+        .timeline-time {
+            font-size: 11px;
+            color: var(--heady-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .timeline-message {
+            font-size: 13px;
+            color: var(--heady-white);
+            margin-top: 4px;
+        }
+
+        /* FOOTER */
+        .orchestrator-footer {
+            background: rgba(10, 10, 26, 0.8);
+            border-top: 1px solid rgba(212, 175, 55, 0.15);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            margin-top: 24px;
+        }
+
+        .footer-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--heady-gray);
+        }
+
+        .connection-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4caf50;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .connection-indicator.disconnected {
+            background: #f44336;
+        }
+
+        .footer-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .refresh-interval {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--heady-gray);
+        }
+
+        .refresh-interval select {
+            background: rgba(212, 175, 55, 0.1);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            color: var(--heady-white);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        /* LOADING STATES */
+        .error-banner {
+            background: rgba(244, 67, 54, 0.1);
+            border: 1px solid rgba(244, 67, 54, 0.3);
+            border-radius: var(--radius-button);
+            padding: 12px 16px;
+            color: #f44336;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .orchestrator-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
+            .header-controls {
+                width: 100%;
+                flex-direction: column;
+            }
+
+            .layer-switcher {
+                width: 100%;
+            }
+
+            .metrics-bar {
+                grid-template-columns: 1fr;
+            }
+
+            .diagnostics-content {
+                grid-template-columns: 1fr;
+            }
+
+            .nodes-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .orchestrator-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
         }
     </style>
 </head>
-<body>
-    <div class="docker-bg"></div>
-    
-    <div class="docker-app">
-        <!-- Header -->
-        <header class="docker-header">
-            <div class="header-brand">
-                <div class="docker-icon"></div>
-                <div class="brand-text">
-                    <h1>Heady Docker Orchestrator</h1>
-                    <p>Deploy • Scale • Monitor • Automate</p>
+<body class="sacred-bg">
+    <!-- HEADER -->
+    <div class="orchestrator-header">
+        <div class="header-left">
+            <button class="back-button" onclick="goHome()" title="Back to Home">
+                &#8592;
+            </button>
+            <div class="header-title">
+                <h1>Infrastructure Orchestrator</h1>
+                <p>Docker & System Resource Management</p>
+            </div>
+        </div>
+        <div class="header-controls">
+            <div class="layer-switcher">
+                <label>Layer:</label>
+                <select id="layer-select" onchange="switchLayer()">
+                    <option value="local">Local</option>
+                    <option value="cloud-me">Cloud (HeadyMe)</option>
+                    <option value="cloud-sys">Cloud (HeadySystems)</option>
+                    <option value="hybrid">Hybrid</option>
+                </select>
+            </div>
+            <button class="refresh-btn" onclick="refreshAll()" title="Refresh all data">
+                &#8634;
+            </button>
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="orchestrator-container">
+        <!-- ERROR BANNER -->
+        <div id="error-banner" style="display: none;"></div>
+
+        <!-- METRICS BAR -->
+        <div class="metrics-bar">
+            <div class="metric-gauge">
+                <div class="gauge-title">CPU Usage</div>
+                <div class="gauge-container">
+                    <svg class="gauge-svg" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                        <circle id="cpu-gauge" cx="50" cy="50" r="45" fill="none"
+                            stroke="url(#gauge-gradient-cpu)" stroke-width="6" stroke-dasharray="283"
+                            stroke-dashoffset="283" transform="rotate(-90 50 50)"/>
+                        <defs>
+                            <linearGradient id="gauge-gradient-cpu" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--heady-cyan);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:var(--heady-magenta);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="gauge-value" id="cpu-value">--</div>
+                </div>
+                <div class="gauge-unit">% Utilization</div>
+            </div>
+
+            <div class="metric-gauge">
+                <div class="gauge-title">Memory Usage</div>
+                <div class="gauge-container">
+                    <svg class="gauge-svg" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                        <circle id="mem-gauge" cx="50" cy="50" r="45" fill="none"
+                            stroke="url(#gauge-gradient-mem)" stroke-width="6" stroke-dasharray="283"
+                            stroke-dashoffset="283" transform="rotate(-90 50 50)"/>
+                        <defs>
+                            <linearGradient id="gauge-gradient-mem" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--heady-gold);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:var(--heady-cyan);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="gauge-value" id="mem-value">--</div>
+                </div>
+                <div class="gauge-unit">% Utilization</div>
+            </div>
+
+            <div class="metric-gauge">
+                <div class="gauge-title">Disk Usage</div>
+                <div class="gauge-container">
+                    <svg class="gauge-svg" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                        <circle id="disk-gauge" cx="50" cy="50" r="45" fill="none"
+                            stroke="url(#gauge-gradient-disk)" stroke-width="6" stroke-dasharray="283"
+                            stroke-dashoffset="283" transform="rotate(-90 50 50)"/>
+                        <defs>
+                            <linearGradient id="gauge-gradient-disk" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--heady-magenta);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:var(--heady-gold);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="gauge-value" id="disk-value">--</div>
+                </div>
+                <div class="gauge-unit">% Utilization</div>
+            </div>
+
+            <div class="metric-gauge">
+                <div class="gauge-title">Network</div>
+                <div class="gauge-container">
+                    <svg class="gauge-svg" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                        <circle id="net-gauge" cx="50" cy="50" r="45" fill="none"
+                            stroke="url(#gauge-gradient-net)" stroke-width="6" stroke-dasharray="283"
+                            stroke-dashoffset="283" transform="rotate(-90 50 50)"/>
+                        <defs>
+                            <linearGradient id="gauge-gradient-net" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:var(--heady-cyan);stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:var(--heady-gold);stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="gauge-value" id="net-value">--</div>
+                </div>
+                <div class="gauge-unit">Mbps</div>
+            </div>
+        </div>
+
+        <!-- NODES SECTION -->
+        <div>
+            <h2 class="section-title">Infrastructure Nodes</h2>
+            <div class="nodes-grid" id="nodes-grid">
+                <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--heady-gray);">
+                    Loading nodes...
                 </div>
             </div>
-            <div class="header-actions">
-                <button class="header-btn secondary">📁 Import Compose</button>
-                <button class="header-btn primary">▶ Deploy Stack</button>
+        </div>
+
+        <!-- SYSTEM LAYERS -->
+        <div class="layers-panel">
+            <h2 class="section-title">Infrastructure Layers</h2>
+            <div class="layers-grid" id="layers-grid">
+                <!-- Populated by JavaScript -->
             </div>
-        </header>
+            <div style="margin-top: 16px; font-size: 12px; color: var(--heady-gray);">
+                Current Layer: <span id="current-layer-display" style="color: var(--heady-cyan); font-weight: 600;">--</span>
+            </div>
+        </div>
 
-        <!-- Main Dashboard -->
-        <main class="docker-dashboard">
-            <!-- Left: Deployment Profiles -->
-            <aside class="profile-panel">
-                <div class="panel-title">⚡ Deployment Profiles</div>
-                
-                <div class="profile-card active">
-                    <div class="profile-header">
-                        <span class="profile-icon">🖥️</span>
-                        <span class="profile-name">Local Offline</span>
-                    </div>
-                    <p class="profile-desc">Everything on-device with local models via Ollama</p>
-                </div>
-
-                <div class="profile-card">
-                    <div class="profile-header">
-                        <span class="profile-icon">⚡</span>
-                        <span class="profile-name">Hybrid Mode</span>
-                    </div>
-                    <p class="profile-desc">Local orchestrator + cloud fallback for heavy tasks</p>
-                </div>
-
-                <div class="profile-card">
-                    <div class="profile-header">
-                        <span class="profile-icon">☁️</span>
-                        <span class="profile-name">Cloud SaaS</span>
-                    </div>
-                    <p class="profile-desc">Full cloud deployment with managed infrastructure</p>
-                </div>
-
-                <div class="profile-card">
-                    <div class="profile-header">
-                        <span class="profile-icon">🌐</span>
-                        <span class="profile-name">Full Suite</span>
-                    </div>
-                    <p class="profile-desc">Everything: API, Web, MCP, Voice, Desktop agents</p>
-                </div>
-
-                <div class="profile-card">
-                    <div class="profile-header">
-                        <span class="profile-icon">🔌</span>
-                        <span class="profile-name">API Only</span>
-                    </div>
-                    <p class="profile-desc">Headless API server for custom integrations</p>
-                </div>
-            </aside>
-
-            <!-- Center: Container Management -->
-            <section class="containers-view">
-                <div class="containers-header">
-                    <h2>🐳 Running Containers</h2>
-                    <div class="status-filter">
-                        <button class="filter-btn active">All</button>
-                        <button class="filter-btn">Running</button>
-                        <button class="filter-btn">Stopped</button>
-                    </div>
-                </div>
-
-                <div class="container-list">
-                    <div class="container-card">
-                        <div class="container-status running">🟢</div>
-                        <div class="container-info">
-                            <div class="container-name">
-                                heady-api
-                                <span class="container-tag">core</span>
-                            </div>
-                            <div class="container-meta">
-                                <span>🖥️ Port 3300</span>
-                                <span>⏱️ 2d 4h</span>
-                                <span>💾 128MB</span>
-                            </div>
-                        </div>
-                        <div class="container-actions">
-                            <button class="action-icon" title="Logs">📄</button>
-                            <button class="action-icon" title="Restart">🔄</button>
-                            <button class="action-icon" title="Stop">⏹️</button>
-                        </div>
-                    </div>
-
-                    <div class="container-card">
-                        <div class="container-status running">🟢</div>
-                        <div class="container-info">
-                            <div class="container-name">
-                                heady-orchestrator
-                                <span class="container-tag">agent</span>
-                            </div>
-                            <div class="container-meta">
-                                <span>🔗 Connected</span>
-                                <span>⏱️ 2d 4h</span>
-                                <span>💾 256MB</span>
-                            </div>
-                        </div>
-                        <div class="container-actions">
-                            <button class="action-icon" title="Logs">📄</button>
-                            <button class="action-icon" title="Restart">🔄</button>
-                            <button class="action-icon" title="Stop">⏹️</button>
-                        </div>
-                    </div>
-
-                    <div class="container-card">
-                        <div class="container-status running">🟢</div>
-                        <div class="container-info">
-                            <div class="container-name">
-                                ollama
-                                <span class="container-tag">model</span>
-                            </div>
-                            <div class="container-meta">
-                                <span>🤖 llama3.2, mistral</span>
-                                <span>⏱️ 2d 4h</span>
-                                <span>💾 4.2GB</span>
-                            </div>
-                        </div>
-                        <div class="container-actions">
-                            <button class="action-icon" title="Logs">📄</button>
-                            <button class="action-icon" title="Restart">🔄</button>
-                            <button class="action-icon" title="Stop">⏹️</button>
-                        </div>
-                    </div>
-
-                    <div class="container-card">
-                        <div class="container-status running">🟢</div>
-                        <div class="container-info">
-                            <div class="container-name">
-                                postgres
-                                <span class="container-tag">db</span>
-                            </div>
-                            <div class="container-meta">
-                                <span>🐘 pgvector enabled</span>
-                                <span>⏱️ 2d 4h</span>
-                                <span>💾 512MB</span>
-                            </div>
-                        </div>
-                        <div class="container-actions">
-                            <button class="action-icon" title="Logs">📄</button>
-                            <button class="action-icon" title="Restart">🔄</button>
-                            <button class="action-icon" title="Stop">⏹️</button>
-                        </div>
-                    </div>
-
-                    <div class="container-card">
-                        <div class="container-status running">🟢</div>
-                        <div class="container-info">
-                            <div class="container-name">
-                                mcp-gateway
-                                <span class="container-tag">tools</span>
-                            </div>
-                            <div class="container-meta">
-                                <span>🔌 6 tools connected</span>
-                                <span>⏱️ 2d 4h</span>
-                                <span>💾 64MB</span>
-                            </div>
-                        </div>
-                        <div class="container-actions">
-                            <button class="action-icon" title="Logs">📄</button>
-                            <button class="action-icon" title="Restart">🔄</button>
-                            <button class="action-icon" title="Stop">⏹️</button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Right: Stats & Resources -->
-            <aside class="stats-panel">
-                <!-- System Stats -->
-                <div class="stat-card">
-                    <h3>Container Health</h3>
-                    <div class="stat-value">5/5</div>
-                    <div class="stat-bar">
-                        <div class="stat-bar-fill" style="width: 100%"></div>
-                    </div>
-                </div>
-
-                <!-- Resource Gauges -->
-                <div class="stat-card">
-                    <h3>Resource Usage</h3>
-                    <div class="gauge-container">
-                        <svg width="0" height="0">
-                            <defs>
-                                <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                                    <stop offset="0%" style="stop-color:#00D9FF"/>
-                                    <stop offset="100%" style="stop-color:#2496ED"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-
-                        <div class="gauge-item">
-                            <div class="gauge-visual">
-                                <svg class="gauge-svg" viewBox="0 0 60 60">
-                                    <circle class="gauge-bg" cx="30" cy="30" r="25"/>
-                                    <circle class="gauge-fill" cx="30" cy="30" r="25" style="stroke-dashoffset: 60"/>
-                                </svg>
-                                <div class="gauge-text">62%</div>
-                            </div>
-                            <div class="gauge-info">
-                                <h4>CPU</h4>
-                                <p>8 cores active</p>
-                            </div>
-                        </div>
-
-                        <div class="gauge-item">
-                            <div class="gauge-visual">
-                                <svg class="gauge-svg" viewBox="0 0 60 60">
-                                    <circle class="gauge-bg" cx="30" cy="30" r="25"/>
-                                    <circle class="gauge-fill" cx="30" cy="30" r="25" style="stroke-dashoffset: 30"/>
-                                </svg>
-                                <div class="gauge-text">42%</div>
-                            </div>
-                            <div class="gauge-info">
-                                <h4>Memory</h4>
-                                <p>6.8GB / 16GB</p>
-                            </div>
-                        </div>
-
-                        <div class="gauge-item">
-                            <div class="gauge-visual">
-                                <svg class="gauge-svg" viewBox="0 0 60 60">
-                                    <circle class="gauge-bg" cx="30" cy="30" r="25"/>
-                                    <circle class="gauge-fill" cx="30" cy="30" r="25" style="stroke-dashoffset: 120"/>
-                                </svg>
-                                <div class="gauge-text">24%</div>
-                            </div>
-                            <div class="gauge-info">
-                                <h4>Storage</h4>
-                                <p>120GB / 500GB</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Network Stats -->
-                <div class="stat-card">
-                    <h3>Network I/O</h3>
-                    <div style="display: flex; justify-content: space-between; margin-top: 12px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 14px; color: #00FF88;">⬆ 2.4 MB/s</div>
-                            <div style="font-size: 11px; color: var(--heady-gray); margin-top: 4px;">Upload</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 14px; color: var(--heady-cyan);">⬇ 8.6 MB/s</div>
-                            <div style="font-size: 11px; color: var(--heady-gray); margin-top: 4px;">Download</div>
-                        </div>
-                    </div>
-                </div>
-            </aside>
-        </main>
-
-        <!-- Footer -->
-        <footer class="docker-footer">
-            <div class="footer-left">
-                <div class="status-item">
-                    <div class="status-dot"></div>
-                    <span class="status-label">Docker Engine:</span>
-                    <span class="status-value">Running</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Images:</span>
-                    <span class="status-value">12</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Volumes:</span>
-                    <span class="status-value">8</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Networks:</span>
-                    <span class="status-value">4</span>
+        <!-- DIAGNOSTICS -->
+        <div class="diagnostics-panel">
+            <h2 class="section-title">Resource Diagnostics</h2>
+            <div class="diagnostics-content" id="diagnostics-content">
+                <div style="text-align: center; color: var(--heady-gray); grid-column: 1/-1; padding: 24px;">
+                    Loading diagnostics...
                 </div>
             </div>
-            <div class="footer-right">
-                <span>🔄 Auto-refresh: ON</span>
-                <span class="footer-action">View Logs</span>
-                <span class="footer-action">Settings</span>
+        </div>
+
+        <!-- QUICK WINS -->
+        <div class="quick-wins-panel">
+            <h2 class="section-title">Optimization Suggestions</h2>
+            <div class="quick-wins-list" id="quick-wins-list">
+                <div style="text-align: center; color: var(--heady-gray); padding: 24px;">
+                    Loading suggestions...
+                </div>
             </div>
-        </footer>
+        </div>
+
+        <!-- TIMELINE -->
+        <div class="timeline-panel">
+            <h2 class="section-title">Infrastructure Timeline</h2>
+            <div class="timeline-items" id="timeline-items">
+                <div style="text-align: center; color: var(--heady-gray); padding: 24px;">
+                    Loading events...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="orchestrator-footer">
+        <div class="footer-status">
+            <div class="connection-indicator" id="connection-indicator"></div>
+            <span id="connection-text">Connected</span>
+        </div>
+        <div class="footer-controls">
+            <div class="refresh-interval">
+                <label>Auto-refresh:</label>
+                <select id="refresh-interval-select" onchange="updateRefreshInterval()">
+                    <option value="5000">Every 5s</option>
+                    <option value="15000" selected>Every 15s</option>
+                    <option value="30000">Every 30s</option>
+                    <option value="60000">Every 60s</option>
+                    <option value="0">Disabled</option>
+                </select>
+            </div>
+            <span style="color: var(--heady-gray); font-size: 12px;" id="last-update">
+                Last update: Never
+            </span>
+        </div>
     </div>
 
     <script>
-        // Simulate container status updates
-        setInterval(() => {
-            const stats = document.querySelectorAll('.stat-bar-fill');
-            stats.forEach(stat => {
-                const width = Math.floor(Math.random() * 30) + 60;
-                stat.style.width = width + '%';
-            });
-        }, 5000);
+        // ============================================================================
+        // API RESOLUTION & CONFIGURATION
+        // ============================================================================
 
-        // Profile selection
-        document.querySelectorAll('.profile-card').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.profile-card').forEach(c => c.classList.remove('active'));
-                card.classList.add('active');
-            });
-        });
+        const HEADY_CLOUD_URLS = [
+            window.location.origin + '/api',
+            'https://heady-manager-headyme.headysystems.com/api',
+            'https://heady-manager-headysystems.headysystems.com/api',
+            'https://heady-manager-headyconnection.headysystems.com/api',
+        ];
 
-        // Filter buttons
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-            });
+        let HEADY_API = HEADY_CLOUD_URLS[0];
+        let _apiResolved = false;
+        let autoRefreshInterval = null;
+        let refreshIntervalMs = 15000;
+
+        async function resolveApi() {
+            if (_apiResolved) return HEADY_API;
+            for (const url of HEADY_CLOUD_URLS) {
+                try {
+                    const r = await fetch(url + '/health', { signal: AbortSignal.timeout(3000) });
+                    if (r.ok) { HEADY_API = url; _apiResolved = true; console.log('Heady API resolved:', url); return url; }
+                } catch(e) { /* try next */ }
+            }
+            return HEADY_API;
+        }
+
+        // ============================================================================
+        // UI HELPER FUNCTIONS
+        // ============================================================================
+
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        function showError(message) {
+            const banner = document.getElementById('error-banner');
+            banner.innerHTML = `<span>⚠ ${message}</span>`;
+            banner.style.display = 'flex';
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 5000);
+        }
+
+        function updateConnectionStatus(connected) {
+            const indicator = document.getElementById('connection-indicator');
+            const text = document.getElementById('connection-text');
+            if (connected) {
+                indicator.classList.remove('disconnected');
+                text.textContent = 'Connected';
+            } else {
+                indicator.classList.add('disconnected');
+                text.textContent = 'Disconnected';
+            }
+        }
+
+        function updateLastUpdate() {
+            const now = new Date();
+            document.getElementById('last-update').textContent =
+                `Last update: ${now.toLocaleTimeString()}`;
+        }
+
+        function setGaugeValue(gaugeId, value, max = 100) {
+            const circumference = 283;
+            const ratio = Math.min(value / max, 1);
+            const offset = circumference * (1 - ratio);
+            document.getElementById(gaugeId).style.strokeDashoffset = offset;
+        }
+
+        // ============================================================================
+        // API CALLS
+        // ============================================================================
+
+        async function fetchHealth() {
+            try {
+                const r = await fetch(`${HEADY_API}/health`);
+                if (!r.ok) throw new Error('Health check failed');
+                const data = await r.json();
+                updateConnectionStatus(true);
+                return data;
+            } catch (e) {
+                console.error('Health check failed:', e);
+                updateConnectionStatus(false);
+                return null;
+            }
+        }
+
+        async function fetchSystemStatus() {
+            try {
+                const r = await fetch(`${HEADY_API}/system/status`);
+                if (!r.ok) throw new Error('System status failed');
+                return await r.json();
+            } catch (e) {
+                console.error('System status failed:', e);
+                showError('Failed to load system status');
+                return null;
+            }
+        }
+
+        async function fetchNodes() {
+            try {
+                const r = await fetch(`${HEADY_API}/nodes`);
+                if (!r.ok) throw new Error('Nodes fetch failed');
+                return await r.json();
+            } catch (e) {
+                console.error('Nodes fetch failed:', e);
+                showError('Failed to load nodes');
+                return [];
+            }
+        }
+
+        async function fetchResourceHealth() {
+            try {
+                const r = await fetch(`${HEADY_API}/resources/health`);
+                if (!r.ok) throw new Error('Resource health failed');
+                return await r.json();
+            } catch (e) {
+                console.error('Resource health failed:', e);
+                return null;
+            }
+        }
+
+        async function fetchResourceDiagnostics() {
+            try {
+                const r = await fetch(`${HEADY_API}/resources/diagnose`);
+                if (!r.ok) throw new Error('Diagnostics failed');
+                return await r.json();
+            } catch (e) {
+                console.error('Diagnostics failed:', e);
+                return null;
+            }
+        }
+
+        async function fetchQuickWins() {
+            try {
+                const r = await fetch(`${HEADY_API}/resources/quick-wins`);
+                if (!r.ok) throw new Error('Quick wins failed');
+                return await r.json();
+            } catch (e) {
+                console.error('Quick wins failed:', e);
+                return [];
+            }
+        }
+
+        async function fetchCurrentLayer() {
+            try {
+                const r = await fetch(`${HEADY_API}/layer`);
+                if (!r.ok) throw new Error('Layer fetch failed');
+                return await r.json();
+            } catch (e) {
+                console.error('Layer fetch failed:', e);
+                return null;
+            }
+        }
+
+        async function fetchAlohaStatus() {
+            try {
+                const r = await fetch(`${HEADY_API}/aloha/status`);
+                if (!r.ok) throw new Error('ALOHA status failed');
+                return await r.json();
+            } catch (e) {
+                console.error('ALOHA status failed:', e);
+                return null;
+            }
+        }
+
+        async function fetchImprovementStatus() {
+            try {
+                const r = await fetch(`${HEADY_API}/improvement/status`);
+                if (!r.ok) throw new Error('Improvement status failed');
+                return await r.json();
+            } catch (e) {
+                console.error('Improvement status failed:', e);
+                return null;
+            }
+        }
+
+        async function activateNode(nodeId) {
+            try {
+                const r = await fetch(`${HEADY_API}/nodes/${nodeId}/activate`, { method: 'POST' });
+                if (!r.ok) throw new Error('Activation failed');
+                await refreshAll();
+            } catch (e) {
+                console.error('Node activation failed:', e);
+                showError(`Failed to activate node: ${e.message}`);
+            }
+        }
+
+        async function deactivateNode(nodeId) {
+            try {
+                const r = await fetch(`${HEADY_API}/nodes/${nodeId}/deactivate`, { method: 'POST' });
+                if (!r.ok) throw new Error('Deactivation failed');
+                await refreshAll();
+            } catch (e) {
+                console.error('Node deactivation failed:', e);
+                showError(`Failed to deactivate node: ${e.message}`);
+            }
+        }
+
+        async function switchLayer() {
+            const layer = document.getElementById('layer-select').value;
+            try {
+                const r = await fetch(`${HEADY_API}/layer/switch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ layer })
+                });
+                if (!r.ok) throw new Error('Layer switch failed');
+                await refreshAll();
+            } catch (e) {
+                console.error('Layer switch failed:', e);
+                showError(`Failed to switch layer: ${e.message}`);
+            }
+        }
+
+        // ============================================================================
+        // RENDERING FUNCTIONS
+        // ============================================================================
+
+        function renderMetrics(health) {
+            if (!health) return;
+
+            const cpu = health.cpu || 0;
+            const memory = health.memory || 0;
+            const disk = health.disk || 0;
+            const network = health.network || 0;
+
+            setGaugeValue('cpu-gauge', cpu, 100);
+            setGaugeValue('mem-gauge', memory, 100);
+            setGaugeValue('disk-gauge', disk, 100);
+            setGaugeValue('net-gauge', Math.min(network / 100, 100), 100);
+
+            document.getElementById('cpu-value').textContent = Math.round(cpu) + '%';
+            document.getElementById('mem-value').textContent = Math.round(memory) + '%';
+            document.getElementById('disk-value').textContent = Math.round(disk) + '%';
+            document.getElementById('net-value').textContent = Math.round(network);
+        }
+
+        function renderNodes(nodes) {
+            const grid = document.getElementById('nodes-grid');
+            if (!nodes || nodes.length === 0) {
+                grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--heady-gray);">No nodes available</div>';
+                return;
+            }
+
+            grid.innerHTML = nodes.map(node => `
+                <div class="node-card">
+                    <div class="node-header">
+                        <div class="node-name">${escapeHtml(node.name || 'Unknown')}</div>
+                        <div class="node-status-badge ${node.active ? 'status-active' : 'status-inactive'}">
+                            <span class="status-dot ${node.active ? 'active' : 'inactive'}"></span>
+                            ${node.active ? 'Active' : 'Inactive'}
+                        </div>
+                    </div>
+                    <div class="node-info">
+                        <div class="node-info-row">
+                            <span class="node-info-label">Type:</span>
+                            <span class="node-info-value">${escapeHtml(node.type || 'Unknown')}</span>
+                        </div>
+                        <div class="node-info-row">
+                            <span class="node-info-label">Status:</span>
+                            <span class="node-info-value">${escapeHtml(node.status || 'Unknown')}</span>
+                        </div>
+                        ${node.cpu !== undefined ? `
+                        <div class="node-info-row">
+                            <span class="node-info-label">CPU:</span>
+                            <span class="node-info-value">${node.cpu.toFixed(1)}%</span>
+                        </div>
+                        ` : ''}
+                        ${node.memory !== undefined ? `
+                        <div class="node-info-row">
+                            <span class="node-info-label">Memory:</span>
+                            <span class="node-info-value">${node.memory.toFixed(1)}%</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    <div class="node-actions">
+                        <button class="action-btn" onclick="activateNode('${escapeHtml(node.id || '')}')">
+                            Activate
+                        </button>
+                        <button class="action-btn danger" onclick="deactivateNode('${escapeHtml(node.id || '')}')">
+                            Deactivate
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderLayers(currentLayer) {
+            const grid = document.getElementById('layers-grid');
+            const layers = ['local', 'cloud-me', 'cloud-sys', 'hybrid'];
+
+            grid.innerHTML = layers.map(layer => `
+                <button class="layer-button ${layer === currentLayer ? 'active' : ''}"
+                    onclick="document.getElementById('layer-select').value='${layer}'; switchLayer()">
+                    <span class="layer-indicator"></span>
+                    ${layer.replace('-', ' ').toUpperCase()}
+                </button>
+            `).join('');
+
+            document.getElementById('current-layer-display').textContent = currentLayer || 'Unknown';
+            document.getElementById('layer-select').value = currentLayer || 'local';
+        }
+
+        function renderDiagnostics(diagnostics) {
+            const content = document.getElementById('diagnostics-content');
+            if (!diagnostics) {
+                content.innerHTML = '<div style="text-align: center; color: var(--heady-gray); grid-column: 1/-1; padding: 24px;">No diagnostic data available</div>';
+                return;
+            }
+
+            const blocks = Object.entries(diagnostics).slice(0, 2);
+            content.innerHTML = blocks.map(([title, items]) => `
+                <div class="diagnostic-block">
+                    <h3 style="font-size: 14px; font-weight: 600; color: var(--heady-white); margin-bottom: 8px;">
+                        ${escapeHtml(title)}
+                    </h3>
+                    ${Array.isArray(items) ? items.map(item => `
+                        <div class="diagnostic-item ${item.status || 'ok'}">
+                            <div class="diagnostic-indicator"></div>
+                            <span>${escapeHtml(item.message || item.text || item)}</span>
+                        </div>
+                    `).join('') : `<div style="color: var(--heady-gray);">No details</div>`}
+                </div>
+            `).join('');
+        }
+
+        function renderQuickWins(wins) {
+            const list = document.getElementById('quick-wins-list');
+            if (!wins || wins.length === 0) {
+                list.innerHTML = '<div style="text-align: center; color: var(--heady-gray); padding: 24px;">No optimization suggestions available</div>';
+                return;
+            }
+
+            list.innerHTML = wins.slice(0, 5).map(win => `
+                <div class="quick-win-item">
+                    <div class="quick-win-content">
+                        <div class="quick-win-title">${escapeHtml(win.title || 'Optimization')}</div>
+                        <div class="quick-win-desc">${escapeHtml(win.description || win.desc || '')}</div>
+                    </div>
+                    <button class="quick-win-action" onclick="alert('Apply optimization: ${escapeHtml(win.title || '')}')">
+                        Apply
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderTimeline(aloha, improvement) {
+            const items = document.getElementById('timeline-items');
+            const events = [];
+
+            if (aloha && aloha.events) {
+                events.push(...aloha.events.map(e => ({
+                    time: e.timestamp || new Date().toISOString(),
+                    message: e.message || e.text || 'System event'
+                })));
+            }
+
+            if (improvement && improvement.events) {
+                events.push(...improvement.events.map(e => ({
+                    time: e.timestamp || new Date().toISOString(),
+                    message: e.message || e.text || 'Improvement event'
+                })));
+            }
+
+            if (events.length === 0) {
+                items.innerHTML = '<div style="text-align: center; color: var(--heady-gray); padding: 24px;">No recent events</div>';
+                return;
+            }
+
+            items.innerHTML = events.slice(0, 10).map(event => `
+                <div class="timeline-item">
+                    <div class="timeline-content">
+                        <div class="timeline-time">${new Date(event.time).toLocaleTimeString()}</div>
+                        <div class="timeline-message">${escapeHtml(event.message)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ============================================================================
+        // MAIN REFRESH LOGIC
+        // ============================================================================
+
+        async function refreshAll() {
+            const btn = document.querySelector('.refresh-btn');
+            btn.classList.add('spinning');
+
+            try {
+                await resolveApi();
+                const [health, status, nodes, diagnostics, wins, layer, aloha, improvement] = await Promise.all([
+                    fetchResourceHealth(),
+                    fetchSystemStatus(),
+                    fetchNodes(),
+                    fetchResourceDiagnostics(),
+                    fetchQuickWins(),
+                    fetchCurrentLayer(),
+                    fetchAlohaStatus(),
+                    fetchImprovementStatus()
+                ]);
+
+                renderMetrics(health);
+                renderNodes(nodes);
+                renderLayers(layer?.current || 'local');
+                renderDiagnostics(diagnostics);
+                renderQuickWins(wins);
+                renderTimeline(aloha, improvement);
+                updateLastUpdate();
+                updateConnectionStatus(true);
+            } catch (e) {
+                console.error('Refresh failed:', e);
+                updateConnectionStatus(false);
+            } finally {
+                btn.classList.remove('spinning');
+            }
+        }
+
+        function updateRefreshInterval() {
+            const select = document.getElementById('refresh-interval-select');
+            refreshIntervalMs = parseInt(select.value);
+
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+
+            if (refreshIntervalMs > 0) {
+                autoRefreshInterval = setInterval(() => refreshAll(), refreshIntervalMs);
+            }
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await resolveApi();
+            await refreshAll();
+            updateRefreshInterval();
         });
     </script>
 </body>
