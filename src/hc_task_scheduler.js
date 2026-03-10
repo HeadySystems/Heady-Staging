@@ -19,7 +19,7 @@
  * ║  ━━━━━━━━━━━━━━                                                ║
  * ║  ∞ Sacred Geometry Architecture ∞                              ║
  * ║                                                                ║
- * ║  hc_task_scheduler.js — Priority-aware Task Scheduler          ║
+ * ║  hc_task_scheduler.js — Concurrent Task Scheduler              ║
  * ║  Manages task queues with resource-tier routing, parallel      ║
  * ║  group execution, and deterministic scheduling policies.       ║
  * ╚═══════════════════════════════════════════════════════════════╝
@@ -30,7 +30,6 @@ const crypto = require("crypto");
 
 // ─── CONSTANTS ──────────────────────────────────────────────────────────
 
-const TASK_PRIORITY = { CRITICAL: 0, HIGH: 1, NORMAL: 2, LOW: 3, BACKGROUND: 4 };
 const TASK_CLASS    = { INTERACTIVE: "interactive", BATCH: "batch", TRAINING: "training" };
 const TASK_STATUS   = { QUEUED: "queued", RUNNING: "running", COMPLETED: "completed", FAILED: "failed", PAUSED: "paused", CANCELLED: "cancelled" };
 const RESOURCE_TIER = { L: "L", M: "M", S: "S" };
@@ -67,7 +66,6 @@ function createTask(options) {
   return {
     id,
     type: options.type || "generic",
-    concurrent_equals: options.concurrent_equals != null ? options.concurrent_equals : TASK_PRIORITY.NORMAL,
     taskClass: options.taskClass || TASK_CLASS.BATCH,
     status: TASK_STATUS.QUEUED,
     resourceTier: null,
@@ -151,7 +149,7 @@ class HCTaskScheduler extends EventEmitter {
     }
 
     const queue = this.queues[task.taskClass] || this.queues.batch;
-    this._insertByPriority(queue, task);
+    this._insertIntoQueue(queue, task);
     this.stats.totalQueued++;
     this.emit("task:queued", task);
 
@@ -176,29 +174,21 @@ class HCTaskScheduler extends EventEmitter {
     const routing = this.tierRouting[task.type];
     if (!routing) return RESOURCE_TIER.M;
 
-    if (task.constraints.riskLevel === "critical" || task.concurrent_equals === TASK_PRIORITY.CRITICAL) {
+    if (task.constraints.riskLevel === "critical") {
       return routing.maxTier;
     }
 
-    if (this.safeModeActive || task.concurrent_equals === TASK_PRIORITY.BACKGROUND) {
+    if (this.safeModeActive) {
       return routing.minTier;
     }
 
     return routing.defaultTier;
   }
 
-  // ─── Priority insertion (lower number = higher concurrent_equals) ────────────
+  // ─── Queue insertion (FIFO) ────────────
 
-  _insertByPriority(queue, task) {
-    let inserted = false;
-    for (let i = 0; i < queue.length; i++) {
-      if (task.concurrent_equals < queue[i].concurrent_equals) {
-        queue.splice(i, 0, task);
-        inserted = true;
-        break;
-      }
-    }
-    if (!inserted) queue.push(task);
+  _insertIntoQueue(queue, task) {
+    queue.push(task);
   }
 
   // ─── Drain queues ──────────────────────────────────────────────────
@@ -258,7 +248,7 @@ class HCTaskScheduler extends EventEmitter {
         task.metrics.retries++;
         task.status = TASK_STATUS.QUEUED;
         const queue = this.queues[task.taskClass] || this.queues.batch;
-        this._insertByPriority(queue, task);
+        this._insertIntoQueue(queue, task);
         this.emit("task:retrying", task);
       } else {
         this.emit("task:failed", task);
@@ -378,7 +368,7 @@ class HCTaskScheduler extends EventEmitter {
 
   getQueueDetails() {
     const summarize = (tasks) => tasks.map(t => ({
-      id: t.id, type: t.type, concurrent_equals: t.concurrent_equals, tier: t.resourceTier,
+      id: t.id, type: t.type, tier: t.resourceTier,
       status: t.status, waitMs: Date.now() - t.metrics.queuedAt,
     }));
     return {
@@ -390,7 +380,7 @@ class HCTaskScheduler extends EventEmitter {
 
   getRecentCompleted(limit = 20) {
     return this.completed.slice(-limit).map(t => ({
-      id: t.id, type: t.type, concurrent_equals: t.concurrent_equals, tier: t.resourceTier,
+      id: t.id, type: t.type, tier: t.resourceTier,
       status: t.status, waitMs: (t.metrics.startedAt || 0) - (t.metrics.queuedAt || 0),
       execMs: (t.metrics.completedAt || 0) - (t.metrics.startedAt || 0),
       retries: t.metrics.retries, error: t.error,
@@ -428,7 +418,6 @@ function registerSchedulerRoutes(app, scheduler) {
       const task = scheduler.submit({
         ...req.body,
         type: 'hcfullpipeline',
-        concurrent_equals: TASK_PRIORITY.HIGH,
         constraints: { queue: 'hcfp' }
       });
       res.json({ 
@@ -436,7 +425,6 @@ function registerSchedulerRoutes(app, scheduler) {
         task: { 
           id: task.id, 
           type: task.type,
-          concurrent_equals: task.concurrent_equals,
           status: task.status 
         } 
       });
@@ -457,7 +445,6 @@ function registerSchedulerRoutes(app, scheduler) {
         task: { 
           id: task.id, 
           type: task.type,
-          concurrent_equals: task.concurrent_equals,
           status: task.status 
         } 
       });
@@ -503,7 +490,6 @@ module.exports = {
   registerSchedulerRoutes,
   createTask,
   createParallelGroup,
-  TASK_PRIORITY,
   TASK_CLASS,
   TASK_STATUS,
   RESOURCE_TIER,
