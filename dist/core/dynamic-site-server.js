@@ -274,18 +274,25 @@ function renderSite(site, host) {
   <style>
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
     :root{
-      --bg:#0a0a1a;--surface:rgba(20,20,50,0.6);--border:rgba(255,255,255,0.08);
+      --bg:#050510;--surface:rgba(12,12,35,0.15);--border:rgba(255,255,255,0.06);
       --brand:${site.color};--accent:${site.accent};
       --text:#e8e8f0;--dim:#8888aa;--muted:#555577;
       --phi:${PHI};
     }
     body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 
-    /* ── Background ────────────────────────── */
-    .bg-grid{position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.02) 1px,transparent 1px);background-size:61.8px 61.8px;z-index:0}
-    .bg-glow{position:fixed;top:-30%;left:-10%;width:60%;height:60%;background:radial-gradient(circle,color-mix(in srgb,var(--brand) 10%,transparent),transparent 60%);z-index:0;animation:drift 20s ease-in-out infinite alternate}
-    .bg-glow2{position:fixed;bottom:-20%;right:-10%;width:50%;height:50%;background:radial-gradient(circle,color-mix(in srgb,var(--accent) 8%,transparent),transparent 60%);z-index:0;animation:drift 15s ease-in-out infinite alternate-reverse}
-    @keyframes drift{from{transform:translate(0,0)}to{transform:translate(30px,-20px)}}
+    /* ── Animated Background ── */
+    #starCanvas{position:fixed;inset:0;z-index:0;pointer-events:none}
+    #geoCanvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.35}
+    .bg-color-wash{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.12;animation:colorWash 38.832s ease-in-out infinite}
+    @keyframes colorWash{
+      0%{background:radial-gradient(ellipse at 20% 20%,#7c3aed33,transparent 60%),radial-gradient(ellipse at 80% 80%,#06b6d433,transparent 60%)}
+      16.18%{background:radial-gradient(ellipse at 40% 30%,#f59e0b33,transparent 60%),radial-gradient(ellipse at 60% 70%,#ec489933,transparent 60%)}
+      38.2%{background:radial-gradient(ellipse at 70% 20%,#10b98133,transparent 60%),radial-gradient(ellipse at 30% 80%,#8b5cf633,transparent 60%)}
+      61.8%{background:radial-gradient(ellipse at 50% 50%,#3b82f633,transparent 60%),radial-gradient(ellipse at 20% 60%,#f97316,transparent 60%)}
+      82.0%{background:radial-gradient(ellipse at 80% 40%,#ec489933,transparent 60%),radial-gradient(ellipse at 10% 90%,#06b6d433,transparent 60%)}
+      100%{background:radial-gradient(ellipse at 20% 20%,#7c3aed33,transparent 60%),radial-gradient(ellipse at 80% 80%,#06b6d433,transparent 60%)}
+    }
     @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
     @keyframes pulse{0%,100%{box-shadow:0 0 20px color-mix(in srgb,var(--brand) 30%,transparent)}50%{box-shadow:0 0 40px color-mix(in srgb,var(--brand) 50%,transparent)}}
 
@@ -317,8 +324,8 @@ function renderSite(site, host) {
 
     /* ── Services ───────────────────────────── */
     .services{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1.5rem;padding:2rem 0 4rem}
-    .svc-card{background:var(--surface);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px;padding:1.5rem;transition:all .3s;animation:fadeUp .6s ease-out}
-    .svc-card:hover{border-color:color-mix(in srgb,var(--brand) 40%,transparent);transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,0.3)}
+    .svc-card{background:rgba(8,8,30,0.25);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.04);border-radius:16px;padding:1.5rem;transition:all .3s;animation:fadeUp .6s ease-out}
+    .svc-card:hover{border-color:color-mix(in srgb,var(--brand) 30%,transparent);transform:translateY(-4px);box-shadow:0 8px 30px rgba(0,0,0,0.2);background:rgba(8,8,30,0.35)}
     .svc-icon{font-size:2rem;margin-bottom:.75rem}
     .svc-card h3{font-size:1rem;font-weight:700;margin-bottom:.4rem}
     .svc-card p{color:var(--dim);font-size:.85rem;line-height:1.5}
@@ -390,9 +397,9 @@ function renderSite(site, host) {
   </style>
 </head>
 <body>
-  <div class="bg-grid"></div>
-  <div class="bg-glow"></div>
-  <div class="bg-glow2"></div>
+  <canvas id="starCanvas"></canvas>
+  <canvas id="geoCanvas"></canvas>
+  <div class="bg-color-wash"></div>
 
   <nav>
     <a class="nav-brand" href="/">
@@ -605,6 +612,147 @@ function renderSite(site, host) {
     document.addEventListener('keydown',e=>{
       if(e.key==='Escape'){closeAuth();closeKey();closeSuccess();}
     });
+
+    // ── Star Field Canvas ──
+    (function(){
+      const PHI=1.618033988749895;
+      const c=document.getElementById('starCanvas');
+      const ctx=c.getContext('2d');
+      let W,H;
+      function resize(){W=c.width=innerWidth;H=c.height=innerHeight;}
+      resize();window.addEventListener('resize',resize);
+      const stars=[];
+      const STAR_COUNT=200;
+      const COLORS=['#fff','#e8d5ff','#d5e8ff','#ffe8d5','#d5ffe8','#ffd5e8','#f0e68c'];
+      for(let i=0;i<STAR_COUNT;i++){
+        stars.push({
+          x:Math.random()*2000,y:Math.random()*2000,
+          r:Math.random()*1.8+0.3,
+          speed:(Math.random()+0.3)*0.15,
+          phase:Math.random()*Math.PI*2,
+          freq:0.5+Math.random()*1.5,
+          color:COLORS[Math.floor(Math.random()*COLORS.length)],
+          drift:Math.random()*0.3-0.15
+        });
+      }
+      function drawStars(t){
+        ctx.clearRect(0,0,W,H);
+        const ts=t*0.001;
+        for(const s of stars){
+          const twinkle=0.3+0.7*((Math.sin(ts*s.freq+s.phase)+1)/2);
+          const breathScale=1+0.15*Math.sin(ts/PHI+s.phase);
+          ctx.globalAlpha=twinkle;
+          ctx.fillStyle=s.color;
+          ctx.beginPath();
+          ctx.arc(
+            (s.x+s.drift*ts*20)%W,
+            (s.y+s.speed*ts*8)%H,
+            s.r*breathScale,0,Math.PI*2
+          );
+          ctx.fill();
+          if(s.r>1.2){
+            ctx.globalAlpha=twinkle*0.15;
+            ctx.beginPath();
+            ctx.arc((s.x+s.drift*ts*20)%W,(s.y+s.speed*ts*8)%H,s.r*breathScale*4,0,Math.PI*2);
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha=1;
+      }
+      // ── Sacred Geometry Canvas ──
+      const gc=document.getElementById('geoCanvas');
+      const gctx=gc.getContext('2d');
+      function resizeGeo(){gc.width=innerWidth;gc.height=innerHeight;}
+      resizeGeo();window.addEventListener('resize',resizeGeo);
+      function drawSacredGeo(t){
+        gctx.clearRect(0,0,gc.width,gc.height);
+        const cx=gc.width/2,cy=gc.height/2;
+        const ts=t*0.001;
+        const breathe=1+0.08*Math.sin(ts/PHI);
+        const breathe2=1+0.05*Math.sin(ts/(PHI*PHI));
+        const R=Math.min(gc.width,gc.height)*0.3*breathe;
+        const rot=ts*0.02;
+        gctx.save();
+        gctx.translate(cx,cy);
+        gctx.rotate(rot);
+        gctx.scale(breathe2,breathe2);
+        // Color cycling per section
+        const hue1=(ts*15)%360;
+        const hue2=(ts*15+120)%360;
+        const hue3=(ts*15+240)%360;
+        // Outer circle (Flower of Life boundary)
+        gctx.strokeStyle='hsla('+hue1+',70%,65%,0.3)';
+        gctx.lineWidth=1.5;
+        gctx.beginPath();gctx.arc(0,0,R,0,Math.PI*2);gctx.stroke();
+        // Inner circle
+        gctx.strokeStyle='hsla('+hue2+',70%,65%,0.2)';
+        gctx.beginPath();gctx.arc(0,0,R*0.618,0,Math.PI*2);gctx.stroke();
+        // Flower of Life petals (6 circles)
+        for(let i=0;i<6;i++){
+          const angle=i*Math.PI/3;
+          const px=Math.cos(angle)*R*0.618;
+          const py=Math.sin(angle)*R*0.618;
+          const petalHue=(hue1+i*60)%360;
+          gctx.strokeStyle='hsla('+petalHue+',60%,60%,'+(0.15+0.1*Math.sin(ts+i))+')'; 
+          gctx.lineWidth=1;
+          gctx.beginPath();gctx.arc(px,py,R*0.618,0,Math.PI*2);gctx.stroke();
+        }
+        // Metatron vertices (13 points)
+        const metaPts=[[0,0]];
+        for(let i=0;i<6;i++){
+          const a=i*Math.PI/3;
+          metaPts.push([Math.cos(a)*R*0.618,Math.sin(a)*R*0.618]);
+          metaPts.push([Math.cos(a)*R,Math.sin(a)*R]);
+        }
+        // Connect all vertices (Metatron's Cube lines)
+        gctx.lineWidth=0.5;
+        for(let i=0;i<metaPts.length;i++){
+          for(let j=i+1;j<metaPts.length;j++){
+            const lineHue=(hue3+i*20+j*10)%360;
+            const dist=Math.hypot(metaPts[i][0]-metaPts[j][0],metaPts[i][1]-metaPts[j][1]);
+            const alpha=Math.max(0.03,0.15-dist/(R*4));
+            gctx.strokeStyle='hsla('+lineHue+',50%,60%,'+alpha+')';
+            gctx.beginPath();
+            gctx.moveTo(metaPts[i][0],metaPts[i][1]);
+            gctx.lineTo(metaPts[j][0],metaPts[j][1]);
+            gctx.stroke();
+          }
+        }
+        // Star tetrahedron (2 overlaid triangles)
+        gctx.lineWidth=1.2;
+        for(let t2=0;t2<2;t2++){
+          const offset=t2*Math.PI/6;
+          const triHue=(t2===0?hue1:hue2);
+          gctx.strokeStyle='hsla('+triHue+',80%,70%,0.25)';
+          gctx.beginPath();
+          for(let i=0;i<3;i++){
+            const a=offset+i*Math.PI*2/3-Math.PI/2;
+            const px=Math.cos(a)*R*0.75;
+            const py=Math.sin(a)*R*0.75;
+            i===0?gctx.moveTo(px,py):gctx.lineTo(px,py);
+          }
+          gctx.closePath();gctx.stroke();
+        }
+        // Glow at vertices
+        for(const[px,py] of metaPts){
+          const nodeBreathe=0.5+0.5*Math.sin(ts*2+px*0.01+py*0.01);
+          const glowR=2+nodeBreathe*3;
+          const g=gctx.createRadialGradient(px,py,0,px,py,glowR*3);
+          const nodeHue=(hue1+px+py)%360;
+          g.addColorStop(0,'hsla('+nodeHue+',80%,80%,'+(0.4+nodeBreathe*0.3)+')');
+          g.addColorStop(1,'hsla('+nodeHue+',80%,80%,0)');
+          gctx.fillStyle=g;
+          gctx.beginPath();gctx.arc(px,py,glowR*3,0,Math.PI*2);gctx.fill();
+        }
+        gctx.restore();
+      }
+      function animate(t){
+        drawStars(t);
+        drawSacredGeo(t);
+        requestAnimationFrame(animate);
+      }
+      requestAnimationFrame(animate);
+    })();
   </script>
 </body>
 </html>`;
