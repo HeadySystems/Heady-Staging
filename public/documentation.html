@@ -784,6 +784,20 @@ kubectl apply -f deploy/k8s/service.yaml</code></pre>
     </footer>
 
     <script>
+        // Resolve API endpoint with fallback to same-origin
+        function resolveApi() {
+            const loc = window.location;
+            const sameOrigin = loc.protocol + '//' + loc.host;
+            const renderUrls = [
+                'https://heady-manager.onrender.com',
+                'https://heady-testing.onrender.com',
+                'https://heady-production.onrender.com'
+            ];
+            // Try same-origin first (works when served from heady-manager)
+            return sameOrigin;
+        }
+
+        // ========== SECTION SCROLL & TOC =========
         function scrollToSection(sectionId) {
             const section = document.getElementById(sectionId);
             if (section) {
@@ -813,6 +827,119 @@ kubectl apply -f deploy/k8s/service.yaml</code></pre>
                 }
             });
             updateActiveTOC(current);
+        });
+
+        // ========== SEARCH FUNCTIONALITY =========
+        let searchTimeout;
+
+        function initSearch() {
+            const searchInput = document.querySelector('.search-input');
+            if (!searchInput) return;
+
+            searchInput.addEventListener('keyup', () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    performSearch(searchInput.value.trim());
+                }, 300); // 300ms debounce
+            });
+        }
+
+        function performSearch(query) {
+            const sections = document.querySelectorAll('.section');
+            let visibleCount = 0;
+
+            if (!query) {
+                // Show all sections
+                sections.forEach(section => {
+                    section.style.display = '';
+                    removeSearchHighlight(section);
+                });
+                return;
+            }
+
+            const lowerQuery = query.toLowerCase();
+
+            sections.forEach(section => {
+                const text = section.textContent.toLowerCase();
+                const title = section.querySelector('.section-title')?.textContent.toLowerCase() || '';
+
+                if (text.includes(lowerQuery) || title.includes(lowerQuery)) {
+                    section.style.display = '';
+                    highlightMatches(section, query);
+                    visibleCount++;
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+
+            // Show "No results" message if needed
+            let noResultsDiv = document.getElementById('search-no-results');
+            if (visibleCount === 0) {
+                if (!noResultsDiv) {
+                    noResultsDiv = document.createElement('div');
+                    noResultsDiv.id = 'search-no-results';
+                    noResultsDiv.style.cssText = 'text-align:center;padding:40px 20px;color:rgba(224,224,224,0.5);font-size:16px;';
+                    document.querySelector('.content').appendChild(noResultsDiv);
+                }
+                noResultsDiv.textContent = `No documentation found for "${query}"`;
+                noResultsDiv.style.display = '';
+            } else {
+                if (noResultsDiv) {
+                    noResultsDiv.style.display = 'none';
+                }
+            }
+        }
+
+        function highlightMatches(section, query) {
+            const lowerQuery = query.toLowerCase();
+            const titleEl = section.querySelector('.section-title');
+
+            if (titleEl) {
+                const titleText = titleEl.textContent;
+                if (titleText.toLowerCase().includes(lowerQuery)) {
+                    applyHighlightToElement(titleEl, query);
+                }
+            }
+
+            const paragraphs = section.querySelectorAll('p');
+            paragraphs.forEach(p => {
+                if (p.textContent.toLowerCase().includes(lowerQuery)) {
+                    applyHighlightToElement(p, query);
+                }
+            });
+        }
+
+        function applyHighlightToElement(el, query) {
+            const text = el.textContent;
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+
+            if (!lowerText.includes(lowerQuery)) return;
+
+            const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            const parts = text.split(regex);
+
+            el.innerHTML = parts.map(part => {
+                if (part.toLowerCase() === query.toLowerCase()) {
+                    return `<span style="text-decoration:underline;text-decoration-color:#d4a574;text-underline-offset:2px;">${part}</span>`;
+                }
+                return part;
+            }).join('');
+        }
+
+        function removeSearchHighlight(section) {
+            const titleEl = section.querySelector('.section-title');
+            if (titleEl) {
+                titleEl.innerHTML = titleEl.textContent;
+            }
+            section.querySelectorAll('p').forEach(p => {
+                p.innerHTML = p.textContent;
+            });
+        }
+
+        // Initialize search on DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            initSearch();
         });
     </script>
 

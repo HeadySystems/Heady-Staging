@@ -414,6 +414,74 @@
             line-height: 1.6;
         }
 
+        /* Success Message */
+        .success-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(78, 205, 196, 0.95);
+            backdrop-filter: blur(10px);
+            border: 2px solid #4ecdc4;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            z-index: 1000;
+            min-width: 300px;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(78, 205, 196, 0.3);
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .success-message.show {
+            display: block;
+        }
+
+        .success-message h3 {
+            color: #0a0a0f;
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+
+        .success-message p {
+            color: #0a0a0f;
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+
+        .success-message .checkmark {
+            font-size: 3em;
+            margin-bottom: 20px;
+            animation: scaleIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0);
+            }
+            to {
+                transform: scale(1);
+            }
+        }
+
+        .submit-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2em;
@@ -447,7 +515,7 @@
         <!-- Contact Form -->
         <div class="glass-card">
             <h2 style="color: #00D9FF; font-size: 2em; margin-bottom: 30px;">Send us a Message</h2>
-            <form class="contact-form">
+            <form id="contactForm" class="contact-form">
                 <div class="form-group half">
                     <label for="name">Full Name</label>
                     <input type="text" id="name" name="name" required>
@@ -519,19 +587,19 @@
                     <div class="channel-icon">🐙</div>
                     <h3>GitHub Issues</h3>
                     <p>Report bugs, request features, or discuss technical details on our GitHub repository.</p>
-                    <a href="#" target="_blank">Visit GitHub →</a>
+                    <a href="https://github.com/HeadyMe" target="_blank">Visit GitHub →</a>
                 </div>
                 <div class="channel-card">
                     <div class="channel-icon">💬</div>
                     <h3>Discord Community</h3>
                     <p>Join our community chat for real-time support, discussions, and peer-to-peer help.</p>
-                    <a href="#" target="_blank">Join Discord →</a>
+                    <a href="https://discord.gg/headysystems" target="_blank">Join Discord →</a>
                 </div>
                 <div class="channel-card">
-                    <div class="channel-icon">📬</div>
-                    <h3>Email Support</h3>
-                    <p>Send detailed inquiries and receive personalized responses from our support team.</p>
-                    <a href="mailto:support@headyconnection.org">Email Us →</a>
+                    <div class="channel-icon">𝕏</div>
+                    <h3>Twitter/X</h3>
+                    <p>Follow us for updates, announcements, and industry insights from the HeadySystems team.</p>
+                    <a href="https://x.com/HeadySystems" target="_blank">Follow on X →</a>
                 </div>
             </div>
         </div>
@@ -668,7 +736,96 @@
         </div>
     </div>
 
+    <!-- Success Message Modal -->
+    <div class="success-message" id="successMessage">
+        <div class="checkmark">✓</div>
+        <h3>Message Sent!</h3>
+        <p>Thank you for contacting HeadySystems. Our team will respond within 24-48 business hours.</p>
+    </div>
+
     <script>
+        // API Resolution Function
+        function resolveApi() {
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            return `${protocol}//${host}`;
+        }
+
+        // Contact Form Submission Handler
+        const contactForm = document.getElementById('contactForm');
+        const successMessage = document.getElementById('successMessage');
+        const submitBtn = contactForm.querySelector('.submit-btn');
+
+        contactForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Validate required fields
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const message = document.getElementById('message').value.trim();
+            const subject = document.getElementById('subject').value.trim();
+
+            if (!name || !email || !message || !subject) {
+                alert('Please fill in all required fields (Name, Email, Subject, and Message).');
+                return;
+            }
+
+            // Email validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert('Please enter a valid email address.');
+                return;
+            }
+
+            // Disable submit button to prevent double-submit
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            try {
+                // Prepare form data
+                const formData = {
+                    name: name,
+                    email: email,
+                    company: document.getElementById('company').value.trim(),
+                    phone: document.getElementById('phone').value.trim(),
+                    subject: subject,
+                    priority: document.getElementById('priority').value,
+                    message: message
+                };
+
+                // POST to API
+                const response = await fetch(`${resolveApi()}/api/notifications/send`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                if (response.ok) {
+                    // Show success message
+                    successMessage.classList.add('show');
+
+                    // Reset form
+                    contactForm.reset();
+
+                    // Hide success message after 5 seconds
+                    setTimeout(() => {
+                        successMessage.classList.remove('show');
+                    }, 5000);
+                } else {
+                    alert('Failed to send message. Please try again or contact support@headyconnection.org');
+                }
+            } catch (error) {
+                console.error('Form submission error:', error);
+                alert('An error occurred. Please try again later or contact support@headyconnection.org');
+            } finally {
+                // Re-enable submit button
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Send Message';
+            }
+        });
+
         // FAQ Toggle Functionality
         const faqItems = document.querySelectorAll('.faq-item');
         faqItems.forEach(item => {

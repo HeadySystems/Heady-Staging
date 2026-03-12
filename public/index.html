@@ -638,6 +638,93 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        /* System Pulse */
+        .system-pulse-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+            animation: slide-up 1s ease-out 0.15s both;
+        }
+
+        .pulse-badge {
+            background: rgba(10, 14, 39, 0.5);
+            border: 1.5px solid rgba(0, 255, 200, 0.2);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .pulse-badge:hover {
+            border-color: rgba(0, 255, 200, 0.5);
+            background: rgba(10, 14, 39, 0.7);
+            box-shadow: 0 0 20px rgba(0, 255, 200, 0.15);
+        }
+
+        .pulse-indicator {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--heady-cyan);
+            box-shadow: 0 0 10px var(--heady-cyan);
+            animation: pulse-breathe 2s ease-in-out infinite;
+        }
+
+        .pulse-indicator.warning {
+            background: var(--heady-gold);
+            box-shadow: 0 0 10px var(--heady-gold);
+        }
+
+        .pulse-indicator.error {
+            background: #ff4466;
+            box-shadow: 0 0 10px #ff4466;
+        }
+
+        .pulse-label {
+            font-size: 0.75rem;
+            color: var(--heady-gray);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .pulse-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--heady-cyan);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .pulse-value.warning {
+            color: var(--heady-gold);
+        }
+
+        .pulse-value.error {
+            color: #ff4466;
+        }
+
+        .pulse-detail {
+            font-size: 0.8rem;
+            color: rgba(224, 224, 224, 0.6);
+            margin-top: 4px;
+        }
+
+        @keyframes pulse-breathe {
+            0%, 100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.6;
+                transform: scale(1.2);
+            }
+        }
     </style>
 </head>
 <body>
@@ -657,6 +744,37 @@
                     <a href="/auth.html" style="padding:8px 20px;border-radius:var(--radius-pill);background:linear-gradient(135deg,var(--heady-gold),var(--heady-gold-dark));color:#000;font-weight:600;text-decoration:none;font-size:0.85rem;transition:all 0.3s;">Sign In</a>
                     <a href="/onboarding.html" style="padding:8px 20px;border-radius:var(--radius-pill);border:1px solid var(--heady-cyan);color:var(--heady-cyan);text-decoration:none;font-size:0.85rem;transition:all 0.3s;">Get Started</a>
                 </div>
+            </div>
+        </section>
+
+        <!-- SYSTEM PULSE (Live Indicators) -->
+        <section class="system-pulse-container" id="systemPulse">
+            <div class="pulse-badge">
+                <div class="pulse-indicator" id="pulseHealth"></div>
+                <div class="pulse-label">Overall Health</div>
+                <div class="pulse-value" id="pulseHealthValue">--</div>
+                <div class="pulse-detail" id="pulseHealthDetail"></div>
+            </div>
+
+            <div class="pulse-badge">
+                <div class="pulse-indicator" id="pulseNodes"></div>
+                <div class="pulse-label">Active Nodes</div>
+                <div class="pulse-value" id="pulseNodesValue">--</div>
+                <div class="pulse-detail" id="pulseNodesDetail"></div>
+            </div>
+
+            <div class="pulse-badge">
+                <div class="pulse-indicator" id="pulseSwarm"></div>
+                <div class="pulse-label">Swarm Status</div>
+                <div class="pulse-value" id="pulseSwarmValue">--</div>
+                <div class="pulse-detail" id="pulseSwarmDetail"></div>
+            </div>
+
+            <div class="pulse-badge">
+                <div class="pulse-indicator" id="pulseScheduler"></div>
+                <div class="pulse-label">Scheduler</div>
+                <div class="pulse-value" id="pulseSchedulerValue">--</div>
+                <div class="pulse-detail" id="pulseSchedulerDetail"></div>
             </div>
         </section>
 
@@ -837,12 +955,15 @@
                     const data = await response.json();
                     document.getElementById('connectionStatus').classList.remove('offline');
                     document.getElementById('systemStatus').textContent = data.status || 'Healthy';
-                    
+
+                    // Update pulse indicator for overall health
+                    updatePulseIndicator('health', data.status === 'Healthy' ? 'ok' : 'warning', data.status || 'Healthy');
+
                     // Parse uptime if available
                     if (data.uptime) {
                         const hours = Math.floor(data.uptime / 3600);
                         const minutes = Math.floor((data.uptime % 3600) / 60);
-                        document.getElementById('metricsUptime').textContent = 
+                        document.getElementById('metricsUptime').textContent =
                             hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
                     }
                 } else {
@@ -852,6 +973,114 @@
                 console.warn('[HeadyOS] Health check failed:', e.message);
                 setOfflineMode();
             }
+        }
+
+        // ========== SYSTEM PULSE UPDATES =========
+        async function updateSystemPulse() {
+            try {
+                // Fetch multiple endpoints in parallel
+                const [healthRes, nodesRes, swarmRes, schedulerRes] = await Promise.allSettled([
+                    fetch(HEADY_API + '/health', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        signal: AbortSignal.timeout(4000)
+                    }),
+                    fetch(HEADY_API + '/liquid-nodes', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        signal: AbortSignal.timeout(4000)
+                    }),
+                    fetch(HEADY_API + '/swarm/health', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        signal: AbortSignal.timeout(4000)
+                    }),
+                    fetch(HEADY_API + '/scheduler/health', {
+                        method: 'GET',
+                        headers: { 'Accept': 'application/json' },
+                        signal: AbortSignal.timeout(4000)
+                    })
+                ]);
+
+                // Process health
+                if (healthRes.status === 'fulfilled' && healthRes.value.ok) {
+                    const data = await healthRes.value.json();
+                    const status = data.status === 'Healthy' ? 'ok' : 'warning';
+                    updatePulseIndicator('health', status, data.status || 'Healthy', data.uptime_seconds ? formatUptime(data.uptime_seconds) : '');
+                } else {
+                    updatePulseIndicator('health', 'error', 'Offline', 'Unreachable');
+                }
+
+                // Process nodes
+                if (nodesRes.status === 'fulfilled' && nodesRes.value.ok) {
+                    const data = await nodesRes.value.json();
+                    const nodeCount = data.count || data.nodes?.length || 0;
+                    const activeCount = data.active || nodeCount;
+                    const status = activeCount > 0 ? 'ok' : 'warning';
+                    updatePulseIndicator('nodes', status, activeCount, `of ${nodeCount}`);
+                } else {
+                    updatePulseIndicator('nodes', 'error', '0', 'Unavailable');
+                }
+
+                // Process swarm
+                if (swarmRes.status === 'fulfilled' && swarmRes.value.ok) {
+                    const data = await swarmRes.value.json();
+                    const status = data.status === 'healthy' ? 'ok' : 'warning';
+                    updatePulseIndicator('swarm', status, data.status || 'Unknown', data.members ? `${data.members} members` : '');
+                } else {
+                    updatePulseIndicator('swarm', 'error', 'Offline', 'Unavailable');
+                }
+
+                // Process scheduler
+                if (schedulerRes.status === 'fulfilled' && schedulerRes.value.ok) {
+                    const data = await schedulerRes.value.json();
+                    const status = data.status === 'running' ? 'ok' : 'warning';
+                    updatePulseIndicator('scheduler', status, data.status || 'Unknown', data.queued ? `${data.queued} queued` : '');
+                } else {
+                    updatePulseIndicator('scheduler', 'error', 'Offline', 'Unavailable');
+                }
+            } catch (e) {
+                console.warn('[HeadyOS] System pulse update failed:', e.message);
+            }
+        }
+
+        function updatePulseIndicator(type, status, value, detail) {
+            const indicatorId = `pulse${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            const valueId = `${indicatorId}Value`;
+            const detailId = `${indicatorId}Detail`;
+
+            const indicator = document.getElementById(indicatorId);
+            const valueEl = document.getElementById(valueId);
+            const detailEl = document.getElementById(detailId);
+
+            if (!indicator || !valueEl) return;
+
+            // Update indicator style
+            indicator.classList.remove('warning', 'error');
+            if (status !== 'ok') {
+                indicator.classList.add(status);
+            }
+
+            // Update value style
+            if (valueEl) {
+                valueEl.classList.remove('warning', 'error');
+                valueEl.textContent = value;
+                if (status !== 'ok') {
+                    valueEl.classList.add(status);
+                }
+            }
+
+            // Update detail
+            if (detailEl && detail) {
+                detailEl.textContent = detail;
+            }
+        }
+
+        function formatUptime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            if (hours > 0) return `${hours}h ${minutes}m`;
+            return `${minutes}m`;
         }
 
         async function updateSystemStats() {
@@ -981,10 +1210,12 @@
             // Update status immediately
             updateSystemStatus();
             updateSystemStats();
+            updateSystemPulse();
 
             // Poll for live updates every 30 seconds
             setInterval(updateSystemStatus, 30000);
             setInterval(updateSystemStats, 30000);
+            setInterval(updateSystemPulse, 30000);
 
             console.log('[HeadyOS] Landing page initialized');
             console.log('[HeadyOS] API Base:', HEADY_API);
@@ -998,6 +1229,7 @@
                 console.log('[HeadyOS] Tab visible, updating status');
                 updateSystemStatus();
                 updateSystemStats();
+                updateSystemPulse();
             }
         });
     </script>

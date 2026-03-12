@@ -66,6 +66,33 @@
             }
         }
 
+        @keyframes slide-down {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        @keyframes slide-up {
+            from {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(-50%) translateY(-20px);
+            }
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* MAIN CONTAINER */
         .onboarding-container {
             position: relative;
@@ -1006,7 +1033,102 @@
                 nextBtn.onclick = () => window.location.href = '/';
             } else {
                 nextBtn.textContent = 'Next →';
-                nextBtn.onclick = () => goToStep(currentStep + 1);
+                nextBtn.onclick = () => validateAndAdvance();
+            }
+        }
+
+        // ===== VALIDATION =====
+        function validateStep(step) {
+            switch (step) {
+                case 2:
+                    if (!selectedUseCase) {
+                        showError('Please select a path to continue');
+                        return false;
+                    }
+                    return true;
+                case 3:
+                    return true;
+                case 4:
+                    return true;
+                case 5:
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        function validateAndAdvance() {
+            if (validateStep(currentStep)) {
+                goToStep(currentStep + 1);
+            }
+        }
+
+        // ===== ERROR HANDLING =====
+        function showError(message) {
+            let errorEl = document.getElementById('onboarding-error');
+            if (!errorEl) {
+                errorEl = document.createElement('div');
+                errorEl.id = 'onboarding-error';
+                errorEl.style.cssText = `
+                    position: fixed;
+                    top: 60px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(255, 80, 80, 0.9);
+                    color: white;
+                    padding: 16px 24px;
+                    border-radius: 8px;
+                    z-index: 999;
+                    box-shadow: 0 4px 20px rgba(255, 80, 80, 0.4);
+                    max-width: 90%;
+                    text-align: center;
+                    animation: slide-down 0.3s ease forwards;
+                    font-weight: 600;
+                `;
+                document.body.appendChild(errorEl);
+            }
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+
+            setTimeout(() => {
+                errorEl.style.animation = 'slide-up 0.3s ease forwards';
+                setTimeout(() => {
+                    errorEl.style.display = 'none';
+                }, 300);
+            }, 4000);
+        }
+
+        function highlightError(selector) {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.style.borderColor = '#ff5050';
+                el.style.boxShadow = '0 0 15px rgba(255, 80, 80, 0.5)';
+            }
+        }
+
+        function clearError(selector) {
+            const el = document.querySelector(selector);
+            if (el) {
+                el.style.borderColor = '';
+                el.style.boxShadow = '';
+            }
+        }
+
+        // ===== LOADING STATE =====
+        function setLoading(isLoading) {
+            const nextBtn = document.getElementById('nextBtn');
+            const backBtn = document.getElementById('backBtn');
+
+            if (isLoading) {
+                nextBtn.disabled = true;
+                backBtn.disabled = true;
+                nextBtn.innerHTML = '<span style="display: inline-block; animation: spin 1s linear infinite;">⟳</span> Loading...';
+                nextBtn.style.opacity = '0.6';
+            } else {
+                nextBtn.disabled = false;
+                backBtn.disabled = false;
+                nextBtn.textContent = currentStep === totalSteps ? 'Enter HeadyOS →' : 'Next →';
+                nextBtn.style.opacity = '1';
             }
         }
 
@@ -1021,6 +1143,7 @@
                 document.querySelectorAll('.use-case-card').forEach(c => c.classList.remove('selected'));
                 card.classList.add('selected');
                 selectedUseCase = card.dataset.useCase;
+                clearError('.use-case-grid');
             });
         });
 
@@ -1063,6 +1186,7 @@
 
         // ===== SAVE PREFERENCES =====
         async function savePreferences() {
+            setLoading(true);
             await resolveApi();
             const token = localStorage.getItem('heady_auth_token');
 
@@ -1079,15 +1203,20 @@
                         onboardingCompleted: true,
                         onboardingDate: new Date().toISOString(),
                     }),
+                    signal: AbortSignal.timeout(8000),
                 });
 
                 if (response.ok) {
                     localStorage.setItem('heady_onboarding_completed', 'true');
+                    setLoading(false);
                     return true;
+                } else {
+                    throw new Error(`Server error: ${response.status}`);
                 }
             } catch (err) {
                 console.warn('Could not save preferences (offline ok)', err);
                 localStorage.setItem('heady_onboarding_completed', 'true');
+                setLoading(false);
                 return true;
             }
         }

@@ -753,12 +753,25 @@
     </footer>
 
     <script>
+        // Resolve API endpoint with fallback to same-origin
+        function resolveApi() {
+            const loc = window.location;
+            const sameOrigin = loc.protocol + '//' + loc.host;
+            const renderUrls = [
+                'https://heady-manager.onrender.com',
+                'https://heady-testing.onrender.com',
+                'https://heady-production.onrender.com'
+            ];
+            // Try same-origin first (works when served from heady-manager)
+            return sameOrigin;
+        }
+
         // Fetch latent space status from API
         let latentStatus = { capacity: 10000, current: 8543, entries: 80 };
 
         async function fetchLatentSpaceStatus() {
             try {
-                const response = await fetch('/api/latent/status', { signal: AbortSignal.timeout(5000) });
+                const response = await fetch(resolveApi() + '/api/latent/status', { signal: AbortSignal.timeout(5000) });
                 if (!response.ok) throw new Error('API unavailable');
                 return await response.json();
             } catch (e) {
