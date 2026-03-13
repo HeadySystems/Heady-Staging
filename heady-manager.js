@@ -462,6 +462,17 @@ app.post('/api/vm/revoke', async (req, res) => {
   }
 });
 
+// ─── HeadyMemory + AutoContext Service ──────────────────────────────
+let memoryService = null;
+try {
+  const { getMemoryService } = require('./src/services/heady-memory-service');
+  memoryService = getMemoryService();
+  app.use('/api', memoryService.createRoutes());
+  log.info('HeadyMemory + AutoContext: ROUTES LOADED');
+} catch (err) {
+  log.warn('HeadyMemory service not loaded', { errorMessage: err.message });
+}
+
 // ─── Static Assets ─────────────────────────────────────────────────
 // All UI pages served from public/ (self-contained HTML + sacred-geometry.css)
 app.use(express.static("public"));
@@ -2847,6 +2858,7 @@ app.get("/api/health", (req, res) => {
     swarms: headySwarms ? 'loaded' : 'not_loaded',
     vectorRouter: vectorRouter ? 'loaded' : 'not_loaded',
     colabLatentOps: colabLatentOps ? 'loaded' : 'not_loaded',
+    memoryService: memoryService ? 'loaded' : 'not_loaded',
   });
 });
 
