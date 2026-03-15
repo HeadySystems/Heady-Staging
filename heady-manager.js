@@ -1481,16 +1481,44 @@ try {
   headySwarms = require('./src/hc_heady_swarms');
   vectorRouter = require('./src/hc_vector_router');
   colabLatentOps = require('./src/colab-latent-ops');
-  log && log.info && log.info('✅ Swarm intelligence modules loaded', {
+  log && log.info && log.info('Swarm intelligence modules loaded', {
     swarms: !!headySwarms,
     vectorRouter: !!vectorRouter,
     colabLatentOps: !!colabLatentOps,
   });
 } catch (e) {
-  log && log.warn && log.warn('⚠️  Swarm modules not loaded (non-fatal):', e.message);
+  log && log.warn && log.warn('Swarm modules not loaded (non-fatal)', { errorMessage: e.message });
   headySwarms = null;
   vectorRouter = null;
   colabLatentOps = null;
+}
+
+// ─── Core Engine Modules: Latent Space, Orchestrator, Conductor ───
+let latentSpace = null;
+let orchestrator = null;
+let conductor = null;
+
+try {
+  latentSpace = require('./src/hc_latent_space');
+  log && log.info && log.info('Latent space module loaded');
+} catch (e) {
+  log && log.warn && log.warn('Latent space module not loaded (non-fatal)', { errorMessage: e.message });
+}
+
+try {
+  const HeadyOrchestrator = require('./src/hc_orchestrator');
+  orchestrator = new HeadyOrchestrator();
+  log && log.info && log.info('Orchestrator module loaded');
+} catch (e) {
+  log && log.warn && log.warn('Orchestrator module not loaded (non-fatal)', { errorMessage: e.message });
+}
+
+try {
+  const HeadyConductor = require('./src/hc_conductor');
+  conductor = new HeadyConductor();
+  log && log.info && log.info('Conductor module loaded');
+} catch (e) {
+  log && log.warn && log.warn('Conductor module not loaded (non-fatal)', { errorMessage: e.message });
 }
 
 // ─── Blueprint Subsystems: PD04, Spatial, Liquid, Resonance ─────────
@@ -2947,8 +2975,8 @@ app.get("/health", (req, res) => {
 });
 
 // ─── Enhanced Health Status with Swarm Modules ──────────────────────
-app.get("/api/health", (req, res) => {
-  res.json({
+function healthResponse() {
+  return {
     status: 'ok',
     timestamp: new Date().toISOString(),
     swarms: headySwarms ? 'loaded' : 'not_loaded',
@@ -2959,7 +2987,19 @@ app.get("/api/health", (req, res) => {
     spatialOrchestrator: spatialOrchestrator ? 'loaded' : 'not_loaded',
     liquidArchitecture: liquidArchitecture ? 'loaded' : 'not_loaded',
     resonanceRouter: resonanceRouter ? 'loaded' : 'not_loaded',
-  });
+    latentSpace: latentSpace ? 'loaded' : 'not_loaded',
+    orchestrator: orchestrator ? 'loaded' : 'not_loaded',
+    conductor: conductor ? 'loaded' : 'not_loaded',
+  };
+}
+
+app.get("/api/health", (req, res) => {
+  res.json(healthResponse());
+});
+
+// Alias required by render.yaml healthCheckPath
+app.get("/api/brain/health", (req, res) => {
+  res.json(healthResponse());
 });
 
 // ─── 404 Handler ────────────────────────────────────────────────────
