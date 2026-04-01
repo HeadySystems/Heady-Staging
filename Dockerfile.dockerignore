@@ -1,0 +1,13 @@
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!heady-manager.js
+!configs/**
+!docs/api/**
+!docker/manager-runtime/**
+!packages/**
+!services/**
+!src/**
+!utils/**
+!Dockerfile

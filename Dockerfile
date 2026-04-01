@@ -1,64 +1,35 @@
-# ═══════════════════════════════════════════════════════════════════════
-#  HEADY SYSTEMS — Production Dockerfile
-#  ∞ Sacred Geometry · Organic Systems · Breathing Interfaces
-# ═══════════════════════════════════════════════════════════════════════
-#
-#  Multi-stage build with phi-derived resource configuration.
-#  Target: Google Cloud Run
-#
-# ─── Stage 1: Build ──────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:22-bookworm-slim
+
+ENV npm_config_engine_strict=false \
+    NODE_ENV=production \
+    PORT=3300
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl ca-certificates tini \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Copy package files first for layer caching
-COPY package.json package-lock.json* ./
+COPY docker/manager-runtime/package.json ./package.json
+COPY heady-manager.js ./
+COPY configs ./configs
+COPY docs/api ./docs/api
+COPY packages ./packages
+COPY services ./services
+COPY src ./src
+COPY utils ./utils
 
-# Install production dependencies only
-RUN npm ci --omit=dev --ignore-scripts 2>/dev/null || npm install --omit=dev --ignore-scripts
+RUN npm install --omit=dev --no-audit --no-fund --prefer-offline
 
-# Copy application source
-COPY . .
+RUN mkdir -p /app/data /app/logs /app/.cache \
+    && chown -R node:node /app
 
-# Remove dev artifacts
-RUN rm -rf .git .github .turbo .heady_cache tests __tests__ \
-    *.test.js *.spec.js .eslintrc.json .prettierrc.json \
-    scripts/kill-port.ps1 scripts/Heady-Sync.ps1
+USER node
 
-# ─── Stage 2: Production ─────────────────────────────────────────────
-FROM node:22-alpine AS production
-LABEL org.opencontainers.image.source="https://github.com/HeadyMe/Heady" \
-      org.opencontainers.image.vendor="Heady Systems" \
-      org.opencontainers.image.title="Heady"
+EXPOSE 3300
 
-# Install tini for proper PID 1 signal handling (SIGTERM → graceful shutdown)
-RUN apk add --no-cache tini curl
+HEALTHCHECK --interval=20s --timeout=5s --start-period=30s --retries=5 \
+  CMD curl -fsS "http://127.0.0.1:${PORT}/api/health" >/dev/null || exit 1
 
-# Security: non-root heady user
-RUN addgroup -g 1001 -S heady && \
-    adduser -S heady -u 1001 -G heady
-
-WORKDIR /app
-
-# Copy built artifacts from builder stage
-COPY --from=builder --chown=heady:heady /app /app
-
-# Security headers
-ENV NODE_ENV=production
-ENV PORT=3000
-
-# Health check — phi-scaled interval (13s check, 8s timeout, 21s start, 5 retries)
-HEALTHCHECK --interval=13s --timeout=8s --start-period=21s --retries=5 \
-  CMD node -e "const http=require('http');const r=http.get('http://0.0.0.0:'+process.env.PORT+'/health',{timeout:5000},(res)=>{process.exit(res.statusCode===200?0:1)});r.on('error',()=>process.exit(1))"
-
-# Switch to non-root user
-USER heady
-
-# Expose port
-EXPOSE 3000
-
-# Use tini as init system
-ENTRYPOINT ["/sbin/tini", "--"]
-
-# Start command
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "heady-manager.js"]

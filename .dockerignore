@@ -1,0 +1,10 @@
+**
+!heady-manager.js
+!configs/**
+!docs/api/**
+!docker/manager-runtime/**
+!packages/**
+!services/**
+!src/**
+!utils/**
+!Dockerfile

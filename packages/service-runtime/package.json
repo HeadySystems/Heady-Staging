@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "fastify": "^5.6.1",
     "@heady-ai/observability-client": "workspace:*",
     "@heady-ai/contract-types": "workspace:*"
   },

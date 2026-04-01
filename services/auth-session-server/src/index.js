@@ -15,6 +15,10 @@ app.use(cookieParser());
 const CSL_CONFIDENCE = { include: 0.382, boost: 0.618, inject: 0.718 };
 const PHI_INTERVAL = 1.618033988749895 * 1000 * 60 * 60 * 24;
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', service: 'auth-session-server' });
+});
+
 app.post('/api/auth/sessionLogin', async (req, res) => {
   const idToken = req.body.idToken;
   const expiresIn = Math.round(PHI_INTERVAL);
